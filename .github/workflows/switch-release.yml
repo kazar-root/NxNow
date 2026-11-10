@@ -1,0 +1,45 @@
+name: Build NxNow for Switch
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Version du NRO
+        required: true
+        default: '0.1'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: switch-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    container: devkitpro/devkita64@sha256:1fc388c3a0d34bd2045a6dadcb1020e069d5f876a187fd705de14b4440c00282
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - name: Install dependency generators
+        run: |
+          apt-get update -qq
+          apt-get install -y --no-install-recommends python3-jinja2 python3-jsonschema
+      - name: Build and verify NRO
+        env:
+          NXNOW_VERSION: ${{ inputs.version }}
+          NXNOW_BUILD_JOBS: '4'
+        run: |
+          bash scripts/build-switch-msys2.sh
+          python3 scripts/verify-nro-assets.py build/switch/NxNow.nro
+      - name: Upload NRO and notices
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: NxNow-${{ inputs.version }}
+          path: |
+            build/switch/NxNow.nro
+            LICENSE
+            NOTICE.md
+            licenses/
+            docs/DEPENDENCIES.md
+          if-no-files-found: error

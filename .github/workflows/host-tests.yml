@@ -1,0 +1,80 @@
+name: Host regression tests
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: host-tests-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Check out source
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+
+      - name: Install host test dependencies
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends \
+            g++ libjansson-dev libcurl4-openssl-dev libsrtp2-dev libusrsctp-dev \
+            libavcodec-dev libavutil-dev libmbedtls-dev libegl-dev libgl1-mesa-dri ffmpeg \
+            python3 openssl cmake pkg-config
+
+      - name: Run host regression tests
+        run: bash scripts/test-host.sh
+
+  ui-layout:
+    name: Native UI layout (${{ matrix.group }})
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - group: library
+            args: --screens-only library
+          - group: store
+            args: --screens-only store
+          - group: settings
+            args: --screens-only settings
+          - group: detail
+            args: --screens-only detail
+          - group: queue
+            args: --screens-only queue
+          - group: overlay and guest/empty
+            args: overlay
+    steps:
+      - name: Check out source
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+
+      - name: Install native UI test dependencies
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends \
+            g++ cmake ninja-build pkg-config python3 imagemagick libjansson-dev \
+            libsdl2-dev libgl1-mesa-dev libcurl4-openssl-dev xvfb xauth
+
+      - name: Build native UI layout test
+        run: |
+          cmake -S tests/ui_layout -B build/ui-layout -G Ninja -DCMAKE_BUILD_TYPE=Debug
+          cmake --build build/ui-layout -j"$(nproc)"
+
+      - name: Check native UI layout
+        env:
+          LP_NUM_THREADS: "1"
+        run: NXNOW_UI_JOBS="$(nproc)" bash tests/ui_layout/run.sh build/ui-layout/ui_layout build/ui-evidence ${{ matrix.args }}
+
+      - name: Upload native UI evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: native-ui-evidence-${{ strategy.job-index }}
+          path: build/ui-evidence
+          if-no-files-found: ignore
+          retention-days: 7

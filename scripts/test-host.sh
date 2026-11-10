@@ -1,0 +1,72 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+cd "$(dirname "$0")/.."
+python3 tests/ui_font_assets_test.py
+bash scripts/test-streaming-host.sh
+
+out="$(mktemp -d)"
+trap 'rm -rf "$out"' EXIT
+cxx="${CXX:-g++}"
+cxxflags=(-std=c++20 -Wall -Wextra -Werror -Iapp/src -pthread)
+if [[ -n "${NXNOW_SANITIZERS:-}" ]]; then
+    cxxflags+=(-g -O1 -fno-omit-frame-pointer "-fsanitize=$NXNOW_SANITIZERS")
+fi
+
+run_cpp() {
+    local name="$1"
+    shift
+    "$cxx" "${cxxflags[@]}" "tests/${name}_test.cpp" "$@" -o "$out/$name"
+    "$out/$name"
+    printf 'PASS %s\n' "$name"
+}
+
+for name in app_launch_mode_policy artwork_image_policy atomic_file_replace auth_policy carousel_policy catalog_image_policy catalog_paging_policy cloud_launch_state launch_progress_policy cover_image_worker \
+    community_proxy_policy device_identity_policy game_detail_policy \
+    game_grid_navigation home_shortcut_policy library_sort library_timetable_policy membership_label \
+    membership_tier_policy nro_shortcut_policy remote_candidate_policy \
+    server_location_policy session_error_policy settings_tab_equality startup_callback_policy subscription_display \
+    ui_refresh_policy ui_text_policy; do
+    run_cpp "$name"
+done
+
+run_cpp ice_candidate_pair_policy -Iextern/libpeer/src
+run_cpp localization app/src/localization.cpp
+run_cpp launch_settings_policy app/src/localization.cpp app/src/keyboard_layout.cpp
+run_cpp library_favorites app/src/library_favorites.cpp -ljansson
+run_cpp manual_library app/src/gfn/manual_library.cpp -ljansson
+run_cpp update_client app/src/update_client.cpp -ljansson
+run_cpp nte_credentials app/src/nte_credentials.cpp
+run_cpp play_history_policy app/src/play_history.cpp -ljansson
+run_cpp stream_settings_persistence app/src/stream_settings.cpp app/src/localization.cpp -ljansson
+run_cpp community_proxy_retirement app/src/stream_settings.cpp app/src/localization.cpp -ljansson
+run_cpp queue_notify_settings app/src/stream_settings.cpp app/src/localization.cpp -ljansson
+run_cpp app_state_session_generation app/src/app_state.cpp
+run_cpp auth_client_token_refresh -ffunction-sections -fdata-sections -Wl,--gc-sections \
+    app/src/gfn/authentication.cpp app/src/gfn/shared.cpp -ljansson
+run_cpp auth_saved_session_refresh -ffunction-sections -fdata-sections -Wl,--gc-sections \
+    app/src/gfn/authentication.cpp app/src/gfn/persistence.cpp app/src/gfn/shared.cpp \
+    -ljansson -lmbedcrypto
+for name in gfn_atomic_write gfn_device_identity gfn_trace_redaction; do
+    run_cpp "$name" -ffunction-sections -fdata-sections -Wl,--gc-sections \
+        app/src/gfn/shared.cpp -ljansson
+done
+run_cpp catalog_response -ffunction-sections -fdata-sections -Wl,--gc-sections \
+    app/src/gfn/shared.cpp -ljansson
+run_cpp cloud_session_allocation -ffunction-sections -fdata-sections -Wl,--gc-sections \
+    app/src/gfn/cloud_session_protocol.cpp app/src/gfn/shared.cpp -ljansson
+run_cpp queue_position_response -ffunction-sections -fdata-sections -Wl,--gc-sections \
+    app/src/gfn/cloud_session_protocol.cpp app/src/gfn/cloud_session_state.cpp app/src/gfn/shared.cpp -ljansson
+run_cpp cloud_session_recovery -ffunction-sections -fdata-sections -Wl,--gc-sections \
+    app/src/gfn/cloud_session.cpp app/src/keyboard_layout.cpp app/src/localization.cpp app/src/gfn/cloud_session_protocol.cpp \
+    app/src/gfn/cloud_session_state.cpp app/src/gfn/shared.cpp -ljansson
+run_cpp cover_image_cache -Itests/cover_cache_stubs -Iextern/borealis/library/include app/src/cover_image_cache.cpp app/src/artwork_image_policy.cpp tests/cover_cache_stubs/stb_image_impl.cpp
+run_cpp cached_image_admission -Itests/cover_cache_stubs -Iextern/borealis/library/include app/src/cover_image_cache.cpp app/src/artwork_image_policy.cpp tests/cover_cache_stubs/stb_image_impl.cpp
+run_cpp http_client_error app/src/http_client.cpp -lcurl
+run_cpp http_transfer -lcurl
+run_cpp http_tls_policy -ffunction-sections -fdata-sections -Wl,--gc-sections app/src/http_client.cpp -lcurl
+run_cpp http_tls_policy -D__SWITCH__ -ffunction-sections -fdata-sections -Wl,--gc-sections app/src/http_client.cpp -lcurl
+"$cxx" "${cxxflags[@]}" tests/http_client_transfer_integration_test.cpp app/src/http_client.cpp \
+    -lcurl -o "$out/http_client_transfer_integration"
+python3 tests/http_client_transfer_fixture.py "$out/http_client_transfer_integration"
+printf 'PASS http_client_transfer_integration\n'

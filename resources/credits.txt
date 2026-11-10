@@ -1,0 +1,4 @@
+NxNow 0.1
+Créé par KazaR-RooT
+Client GeForce NOW pour Nintendo Switch.
+Licences des composants : voir licenses/ et les notices des polices.

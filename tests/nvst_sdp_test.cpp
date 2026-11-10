@@ -1,0 +1,73 @@
+#include "webrtc/nvst_sdp.hpp"
+
+#include <cassert>
+#include <string>
+
+namespace
+{
+
+bool HasLine(const std::string& sdp, const std::string& line)
+{
+    return sdp.find(line + "\n") != std::string::npos;
+}
+
+bool HasAttribute(const std::string& sdp, const std::string& attribute)
+{
+    return sdp.find("a=" + attribute) != std::string::npos;
+}
+
+} // namespace
+
+int main()
+{
+    nxnow::StreamSettings settings;
+    settings.width = 1280;
+    settings.height = 720;
+    settings.fps = 60;
+    settings.bitrate_kbps = 12000;
+    settings.image_quality_mode = "Adaptive";
+
+    const std::string answer =
+        "v=0\r\n"
+        "a=ice-ufrag:test-ufrag\r\n"
+        "a=ice-pwd:test-password\r\n"
+        "a=fingerprint:sha-256 AA:BB:CC\r\n";
+    const std::string sdp = nxnow::webrtc::BuildNvstSdp(
+        answer, settings, nxnow::webrtc::RiInputCapabilities {});
+
+    for (const auto& line : {
+        "a=video.maxFPS:60",
+        "a=video.initialBitrateKbps:12000",
+        "a=video.initialPeakBitrateKbps:12000",
+        "a=vqos.bw.maximumBitrateKbps:12000",
+        "a=vqos.bw.minimumBitrateKbps:4000",
+        "a=vqos.dynamicStreamingMode:0",
+        "a=vqos.drc.enable:0",
+        "a=vqos.resControl.cpmRtc.featureMask:0",
+        "a=vqos.resControl.cpmRtc.enable:0",
+        "a=vqos.resControl.cpmRtc.minResolutionPercent:100",
+        "a=vqos.resControl.cpmRtc.resolutionChangeHoldonMs:999999",
+    }) {
+        assert(HasLine(sdp, line));
+    }
+
+    for (const auto& attribute : {
+        "vqos.bw.peakBitrateKbps:",
+        "vqos.bw.serverPeakBitrateKbps:",
+        "vqos.bw.enableBandwidthEstimation:",
+        "vqos.bw.disableBitrateLimit:",
+        "vqos.grc.maximumBitrateKbps:",
+        "vqos.grc.enable:",
+        "vqos.dfc.enable:",
+        "vqos.dfc.adjustResAndFps:",
+    }) {
+        assert(!HasAttribute(sdp, attribute));
+    }
+
+    settings.bitrate_kbps = 20000;
+    const std::string quality_sdp = nxnow::webrtc::BuildNvstSdp(
+        answer, settings, nxnow::webrtc::RiInputCapabilities {});
+    assert(HasLine(quality_sdp, "a=video.initialBitrateKbps:20000"));
+    assert(HasLine(quality_sdp, "a=vqos.bw.maximumBitrateKbps:20000"));
+    return 0;
+}

@@ -1,0 +1,661 @@
+#include "catalog_tab.hpp"
+
+#include "app_state.hpp"
+#include "game_browser_header.hpp"
+#include "game_detail_view.hpp"
+#include "game_detail_policy.hpp"
+#include "game_card_view.hpp"
+#include "game_grid_navigation.hpp"
+#include "ui_action_guard.hpp"
+#include "ui_helpers.hpp"
+#include "localization.hpp"
+#include "ui_theme.hpp"
+#include "ui_text_policy.hpp"
+#include "manual_library_policy.hpp"
+
+#include <algorithm>
+#include <array>
+#include <cctype>
+#include <utility>
+
+namespace nxnow
+{
+namespace
+{
+
+constexpr size_t kInitialVisibleGameLimit = 10;
+constexpr size_t kCardsPerRow      = 5;
+constexpr std::array<const char*, 6> kStoreFilters = {"All", "Steam", "Epic", "Ubisoft", "Xbox", "Battle.net"};
+constexpr std::array<const char*, 3> kCatalogSortModes = {"A-Z", "Store", "Publisher"};
+constexpr std::array<const char*, 3> kBrowseModes = {"All games", "Free-to-play games", "Games not in my library"};
+
+brls::Label* MakeParagraph(const std::string& text, float bottom_margin = 16.0f)
+{
+    auto* label = ui::MakeLabel(Tr(text), 18, ui::Muted());
+    label->setMarginBottom(bottom_margin);
+    return label;
+}
+
+std::string ToLower(std::string value)
+{
+    std::transform(value.begin(), value.end(), value.begin(), [](unsigned char ch) {
+        return static_cast<char>(std::tolower(ch));
+    });
+    return value;
+}
+
+bool ContainsText(const std::string& haystack, const std::string& needle)
+{
+    return ToLower(haystack).find(ToLower(needle)) != std::string::npos;
+}
+
+bool MatchesStoreFilter(const PublicGame& game, size_t filter_index)
+{
+    if (filter_index == 0 || filter_index >= kStoreFilters.size())
+        return true;
+
+    const std::string filter = kStoreFilters[filter_index];
+    if (ContainsText(game.store, filter) || ContainsText(game.publisher, filter))
+        return true;
+
+    if (filter == "Battle.net")
+        return ContainsText(game.store, "battle") || ContainsText(game.publisher, "blizzard");
+
+    return false;
+}
+
+} // namespace
+
+CatalogTab::CatalogTab()
+    : brls::Box(brls::Axis::COLUMN)
+{
+    setId("catalog");
+    setPadding(10, 36, 10, 36);
+    setBackgroundColor(ui::Ground());
+    interface_language_ = GetInterfaceLanguage();
+
+    search_button_ = ui::MakeGameBrowserActionButton(Tr("Search"));
+    filter_button_ = ui::MakeGameBrowserActionButton("ZL  All stores");
+    sort_button_   = ui::MakeGameBrowserActionButton("ZR  A-Z");
+    search_button_->setId("catalog-search");
+    filter_button_->setId("catalog-filter");
+    sort_button_->setId("catalog-sort");
+    search_button_->setStyle(&brls::BUTTONSTYLE_HIGHLIGHT);
+    toolbar_buttons_ = {search_button_, filter_button_};
+    sort_button_->setVisibility(brls::Visibility::GONE);
+    auto* header = ui::MakeGameBrowserHeader("Catalog", {search_button_, filter_button_, sort_button_});
+    header->setMarginLeft(4);
+    header->setMarginRight(4);
+    addView(header);
+
+    search_button_->registerClickAction([this](brls::View*) {
+        return RunUiAction("catalog.search.button", [this]() { BeginSearch(); });
+    });
+    filter_button_->registerClickAction([this](brls::View*) {
+        return RunUiAction("catalog.filter.button", [this]() {
+            auto* menu = new brls::Dropdown(Tr("Browse games"),
+                {Tr(kBrowseModes[0]), Tr(kBrowseModes[1]), Tr(kBrowseModes[2])},
+                [this, alive = alive_](int selected) {
+                    if (alive->load() && selected >= 0) SetBrowseMode(static_cast<size_t>(selected));
+                }, static_cast<int>(browse_mode_));
+            brls::Application::pushActivity(new brls::Activity(menu));
+        });
+    });
+    sort_button_->registerClickAction([this](brls::View*) {
+        return RunUiAction("catalog.sort.button", [this]() { CycleSortMode(); });
+    });
+
+    status_label_ = MakeParagraph("Loading the supported GeForce NOW catalog...", 8.0f);
+    status_label_->setId("catalog-status");
+    status_label_->setFontSize(14);
+    status_label_->setWidthPercentage(100);
+    status_label_->setMaxHeight(64);
+    status_label_->setMarginLeft(4);
+    status_label_->setMarginRight(4);
+    addView(status_label_);
+
+    scrolling_frame_ = new ui::FadingScrollFrame();
+    scrolling_frame_->setGrow(1.0f);
+    scrolling_frame_->setScrollingIndicatorVisible(false);
+    scrolling_frame_->setScrollingBehavior(brls::ScrollingBehavior::CENTERED);
+
+    list_container_ = new brls::Box(brls::Axis::COLUMN);
+    list_container_->setId("catalog-list");
+    list_container_->setPadding(4, 4, 32, 4);
+    scrolling_frame_->setContentView(list_container_);
+
+    addView(scrolling_frame_);
+
+    registerAction(Tr("Refresh"), brls::BUTTON_Y, [this](brls::View*) {
+        return RunUiAction("catalog.refresh.hotkey", [this] { ReloadCatalog(); });
+    });
+}
+
+CatalogTab::~CatalogTab()
+{
+    alive_->store(false);
+    LogUiAction("catalog", "destroy");
+}
+
+void CatalogTab::BeginSearch()
+{
+    if (loading_)
+        return;
+    const auto alive = alive_;
+    const auto generation = AppState::Instance().session_generation();
+    brls::Application::giveFocus(search_button_);
+    brls::Application::getImeManager()->openForText(
+        [this, alive, generation](std::string text) {
+            if (!alive->load() || AppState::Instance().session_generation() != generation)
+                return;
+            RunUiAction("catalog.search.result", [this, text = std::move(text)]() mutable {
+                if (loading_)
+                    return;
+                MoveFocusBeforeDestroy(list_container_, search_button_);
+                search_query_ = std::move(text);
+                page_index_ = 0;
+                if (AppState::Instance().HasSession())
+                    ReloadCatalog();
+                else
+                    RebuildList();
+            });
+        },
+        Tr("Search Catalog"), Tr("Enter a title to filter games"), 64, search_query_);
+}
+
+brls::View* CatalogTab::getDefaultFocus() { return first_card_ ? first_card_ : search_button_; }
+void CatalogTab::draw(NVGcontext* vg, float x, float y, float width, float height,
+                      brls::Style style, brls::FrameContext* ctx)
+{
+    if (library_revision_ != AppState::Instance().library_revision()) RebuildList();
+    brls::Box::draw(vg, x, y, width, height, style, ctx);
+}
+void CatalogTab::SuspendArtwork()
+{
+    artwork_suspended_ = true;
+    RebuildList();
+}
+void CatalogTab::SetBrowseMode(size_t mode)
+{
+    if (mode >= kBrowseModes.size()) return;
+    browse_mode_ = mode;
+    page_index_ = 0;
+    catalog_ = {};
+    search_query_.clear();
+    RebuildList();
+    if (!loading_) ReloadCatalog();
+}
+
+void CatalogTab::willAppear(bool resetState)
+{
+    brls::Box::willAppear(resetState);
+    artwork_suspended_ = false;
+
+    if (interface_language_ != GetInterfaceLanguage())
+    {
+        interface_language_ = GetInterfaceLanguage();
+        if (auto* heading = dynamic_cast<brls::Label*>(getView("browser-heading")))
+            heading->setText(Tr("Catalog"));
+        search_button_->setText(Tr("Search"));
+        search_button_->setWidth(ui::ToolbarButtonWidth(search_button_->getText()));
+    }
+    RebuildList();
+
+    const auto& state = AppState::Instance();
+    if (state.session_generation() != catalog_session_generation_)
+    {
+        catalog_ = {};
+        catalog_session_generation_ = state.session_generation();
+        page_index_ = 0;
+        RebuildList();
+    }
+    if (catalog_.page().games.empty() && !state.HasSession() && state.HasPublicGames())
+    {
+        CatalogPage page;
+        page.games = state.public_games();
+        page.total_count = page.games.size();
+        catalog_.Apply(std::move(page), false);
+        RebuildList();
+        return;
+    }
+
+    if (catalog_.page().games.empty() && !loading_)
+        ReloadCatalog();
+}
+
+void CatalogTab::ReloadCatalog(bool append)
+{
+    if (loading_)
+        return;
+    const auto& auth_state = AppState::Instance();
+    if (auth_state.HasSession() && auth_state.session()->reauthentication_required)
+    {
+        status_label_->setText(Tr("Reconnect this account from Settings > Account before refreshing the catalog."));
+        return;
+    }
+
+    if (AppState::Instance().session_generation() != catalog_session_generation_)
+    {
+        catalog_ = {};
+        catalog_session_generation_ = AppState::Instance().session_generation();
+        page_index_ = 0;
+        append = false;
+        RebuildList();
+    }
+
+    loading_ = true;
+    const std::string server_query = search_query_;
+    const std::string language = GetInterfaceLanguage();
+    append = append && catalog_server_query_ == server_query;
+    const std::string cursor = append ? catalog_.page().next_cursor.value_or("") : "";
+    status_label_->setText(Tr(server_query.empty()
+        ? "Loading current GeForce NOW catalog..."
+        : "Searching the GeForce NOW catalog..."));
+
+    GfnClient client = client_;
+    const auto alive = alive_;
+    const bool authenticated = AppState::Instance().HasSession();
+    const auto browse_mode = browse_mode_;
+    const auto generation = AppState::Instance().session_generation();
+    AuthSession session;
+    if (authenticated)
+        session = *AppState::Instance().session();
+    brls::async([this, alive, client, authenticated, browse_mode, session = std::move(session), server_query, cursor, append, generation, language]() mutable {
+        try
+        {
+            CatalogPage page;
+            if (authenticated && browse_mode != 1)
+                page = client.FetchCatalogPage(session, server_query, cursor, language);
+            else
+            {
+                page.games = client.FetchPublicGames();
+                if (browse_mode == 1)
+                    std::erase_if(page.games, [](const auto& game) { return !game.is_free_to_play; });
+                page.total_count = page.games.size();
+            }
+            brls::sync([this, alive, authenticated, page = std::move(page),
+                        session = std::move(session), append, generation, server_query, browse_mode]() mutable {
+                if (!alive->load())
+                    return;
+                auto& state = AppState::Instance();
+                if (state.session_generation() != generation || authenticated != state.HasSession() ||
+                    (authenticated && state.session()->user.user_id != session.user.user_id))
+                {
+                    loading_ = false;
+                    status_label_->setText(Tr("Account changed. Press Y to reload the catalog."));
+                    return;
+                }
+                loading_ = false;
+                if (browse_mode != browse_mode_)
+                {
+                    ReloadCatalog();
+                    return;
+                }
+                try
+                {
+                    catalog_.Apply(std::move(page), append);
+                }
+                catch (const std::exception& error)
+                {
+                    status_label_->setText(Tr("Catalog pagination failed. Press Y to retry."));
+                    ShowError("Catalog Request Failed", error.what());
+                    return;
+                }
+                catalog_session_generation_ = generation;
+                catalog_server_query_ = authenticated ? server_query : "";
+                if (authenticated)
+                    AppState::Instance().SetSession(std::move(session));
+                else
+                    AppState::Instance().SetPublicGames(catalog_.page().games);
+                page_index_ = append ? filtered_count_ / kInitialVisibleGameLimit : 0;
+                RebuildList();
+                brls::Application::notify(Tr(append ? "More catalog games loaded" : "Catalog page loaded"));
+            });
+        }
+        catch (const std::exception& ex)
+        {
+            const std::string error = ex.what();
+            brls::sync([this, alive, error, generation]() {
+                if (!alive->load())
+                    return;
+                loading_ = false;
+                if (AppState::Instance().session_generation() != generation)
+                    return;
+                status_label_->setText(Tr("Catalog request failed. Press Y to retry."));
+                ShowError("Catalog Request Failed", error);
+            });
+        }
+    }, false);
+}
+
+void CatalogTab::RebuildList()
+{
+    const auto& games_ = catalog_.page().games;
+    if (rebuilding_)
+        return;
+    rebuilding_ = true;
+    struct ResetFlag { bool& flag; ~ResetFlag() { flag = false; } } reset {rebuilding_};
+
+    brls::View* current_focus = brls::Application::getCurrentFocus();
+    const bool paging_had_focus = current_focus == load_more_button_ ||
+        current_focus == previous_page_button_;
+
+    MoveFocusBeforeDestroy(list_container_, search_button_);
+    setLastFocusedView(search_button_);
+    WireVerticalGridNavigation({toolbar_buttons_});
+    if (paging_container_)
+        WireVerticalGridNavigation({{previous_page_button_, load_more_button_}});
+    DetachPagingButton();
+    list_container_->clearViews();
+    card_rows_.clear();
+    first_card_ = nullptr;
+    load_more_pending_ = false;
+    library_revision_ = AppState::Instance().library_revision();
+    filter_button_->setText(Tr(kBrowseModes[browse_mode_]));
+    filter_button_->setWidth(ui::ToolbarButtonWidth(filter_button_->getText()));
+    if (artwork_suspended_) return;
+
+    std::vector<size_t> filtered_indices;
+    std::string lower_query = ToLower(search_query_);
+
+    for (size_t i = 0; i < games_.size(); ++i)
+    {
+        const PublicGame& game = games_[i];
+        const bool matches_query = lower_query.empty() || ToLower(game.title).find(lower_query) != std::string::npos;
+        bool owned = game.is_in_library;
+        if (AppState::Instance().HasSession())
+            for (const auto& item : AppState::Instance().library_games())
+                owned = owned || library::SameGame(game, item);
+        if (matches_query && MatchesStoreFilter(game, store_filter_index_) &&
+            (browse_mode_ != 2 || !owned))
+        {
+            filtered_indices.push_back(i);
+        }
+    }
+
+    std::sort(filtered_indices.begin(), filtered_indices.end(), [this, &games_](size_t left_index, size_t right_index) {
+        const PublicGame& left = games_[left_index];
+        const PublicGame& right = games_[right_index];
+
+        if (sort_mode_index_ == 1 && left.store != right.store)
+            return left.store < right.store;
+
+        if (sort_mode_index_ == 2 && left.publisher != right.publisher)
+            return left.publisher < right.publisher;
+
+        return left.title < right.title;
+    });
+
+    filtered_count_ = filtered_indices.size();
+    const size_t total_pages = filtered_count_ == 0
+        ? 1
+        : (filtered_count_ + kInitialVisibleGameLimit - 1) / kInitialVisibleGameLimit;
+    if (page_index_ >= total_pages)
+        page_index_ = total_pages - 1;
+    const size_t page_start = std::min(filtered_count_, page_index_ * kInitialVisibleGameLimit);
+    const size_t page_end = std::min(filtered_count_, page_start + kInitialVisibleGameLimit);
+    std::string status = TrFormat("{0} games · Page {1}/{2}", {
+        std::to_string(filtered_count_), std::to_string(page_index_ + 1), std::to_string(total_pages)});
+    if (catalog_.page().next_cursor)
+        status += " · " + Tr("More games available online");
+
+    status_label_->setText(status);
+    const auto& state = AppState::Instance();
+    if (state.HasSession() && state.session()->reauthentication_required)
+        status_label_->setText(Tr("Reconnect this account from Settings > Account before refreshing the catalog."));
+    sort_button_->setText(Tr("ZR  ") + Tr(kCatalogSortModes[sort_mode_index_]));
+    filter_button_->setWidth(ui::ToolbarButtonWidth(filter_button_->getText()));
+    sort_button_->setWidth(ui::ToolbarButtonWidth(sort_button_->getText()));
+
+    if (filtered_indices.empty())
+    {
+        std::string empty_msg = search_query_.empty()
+            ? "No public titles were returned by the feed."
+            : "No games found matching your search.";
+        list_container_->addView(MakeParagraph(empty_msg, 0.0f));
+        AttachPagingButton(false, 0);
+        WireVerticalGridNavigation({toolbar_buttons_, {previous_page_button_, load_more_button_}});
+        return;
+    }
+
+    for (size_t start = page_start; start < page_end; start += kCardsPerRow)
+    {
+        auto* row = new brls::Box(brls::Axis::ROW);
+        row->setId("catalog-row-" + std::to_string((start - page_start) / kCardsPerRow));
+        row->setWidth(1200);
+        row->setShrink(0);
+        std::vector<brls::View*> card_row;
+        const size_t end = std::min(start + kCardsPerRow, page_end);
+
+        for (size_t i = start; i < end; ++i)
+        {
+            const size_t index = filtered_indices[i];
+            const PublicGame& game = games_[index];
+
+            GameCardDisplay display;
+            display.title     = game.title;
+            display.subtitle  = game_detail::IsUnknownMetadata(game.store) ? "" : game.store;
+            display.badge     = game_detail::IsUnknownMetadata(game.publisher) ? "" : game.publisher;
+            display.in_library = game.is_in_library;
+            display.image_url = game.image_url;
+            display.compact = true;
+
+            auto* card = new GameCardView(display, [this, index]() {
+                OpenGameDialog(nullptr, index);
+            });
+            card->setId("catalog-card-" + game.id);
+            card->setMarginRight(i + 1 < end ? 25.0f : 0.0f);
+
+            if (!first_card_)
+                first_card_ = card;
+
+            row->addView(card);
+            card_row.push_back(card);
+        }
+
+        list_container_->addView(row);
+        card_rows_.push_back(std::move(card_row));
+    }
+
+    std::vector<std::vector<brls::View*>> navigation_rows {toolbar_buttons_};
+    navigation_rows.insert(navigation_rows.end(), card_rows_.begin(), card_rows_.end());
+    AttachPagingButton(page_end < filtered_count_, filtered_count_ - page_end);
+    navigation_rows.push_back({previous_page_button_, load_more_button_});
+    WireVerticalGridNavigation(navigation_rows);
+
+    if (paging_had_focus && first_card_)
+        brls::Application::giveFocus(first_card_);
+    else if (first_card_ && !brls::Application::getCurrentFocus())
+        brls::Application::giveFocus(first_card_);
+    if (first_card_)
+        setLastFocusedView(first_card_);
+}
+
+void CatalogTab::EnsurePagingButton()
+{
+    if (paging_container_)
+        return;
+
+    paging_container_ = new brls::Box(brls::Axis::ROW);
+    paging_container_->setMarginTop(14);
+    paging_container_->setMarginBottom(24);
+
+    previous_page_button_ = new brls::Button();
+    previous_page_button_->setId("catalog-previous");
+    previous_page_button_->setStyle(&brls::BUTTONSTYLE_BORDERED);
+    previous_page_button_->setMarginRight(12);
+    previous_page_button_->setGrow(1.0f);
+    previous_page_button_->registerClickAction([this](brls::View*) {
+        return RunUiAction("catalog.previous_page.button", [this]() {
+            HandlePreviousPage();
+        });
+    });
+    paging_container_->addView(previous_page_button_);
+
+    load_more_button_ = new brls::Button();
+    load_more_button_->setId("catalog-next");
+    load_more_button_->setStyle(&brls::BUTTONSTYLE_PRIMARY);
+    load_more_button_->setGrow(1.0f);
+    load_more_button_->registerClickAction([this](brls::View*) {
+        return RunUiAction("catalog.show_more.button", [this]() {
+            HandlePagingButton();
+        });
+    });
+    paging_container_->addView(load_more_button_);
+}
+
+void CatalogTab::DetachPagingButton()
+{
+    if (!paging_container_ || !paging_button_attached_)
+        return;
+
+    // Navigation routes store raw view pointers. Keep this object alive while
+    // rows are appended so no route can observe a freed paging button.
+    list_container_->removeView(paging_container_, false);
+    paging_button_attached_ = false;
+}
+
+void CatalogTab::AttachPagingButton(bool has_more, size_t remaining)
+{
+    EnsurePagingButton();
+    if (paging_button_attached_)
+        DetachPagingButton();
+
+    previous_page_button_->setText("‹  " + Tr(page_index_ > 0 ? "Previous page" : "First page"));
+    load_more_button_->setText(has_more
+        ? Tr("Next page") + "  ›"
+        : Tr(catalog_.page().next_cursor ? "Load next catalog page" : "Refresh catalog") + "  ›");
+    (void)remaining;
+    list_container_->addView(paging_container_);
+    paging_button_attached_ = true;
+}
+
+void CatalogTab::HandlePagingButton()
+{
+    if (loading_ || load_more_pending_)
+        return;
+    if (AppState::Instance().HasSession() && catalog_server_query_ != search_query_)
+    {
+        ReloadCatalog();
+        return;
+    }
+
+    const size_t next_start = (page_index_ + 1) * kInitialVisibleGameLimit;
+    if (next_start >= filtered_count_)
+    {
+        ReloadCatalog(catalog_.page().next_cursor.has_value());
+        return;
+    }
+
+    load_more_pending_ = true;
+    brls::Application::giveFocus(search_button_);
+    const auto alive = alive_;
+    const auto generation = AppState::Instance().session_generation();
+    brls::sync([this, alive, generation]() {
+        if (!alive->load())
+            return;
+        if (AppState::Instance().session_generation() != generation)
+        {
+            load_more_pending_ = false;
+            return;
+        }
+
+        const std::string before = "page=" + std::to_string(page_index_ + 1) +
+            " filtered=" + std::to_string(filtered_count_);
+        LogUiAction("catalog.show_more.deferred", "begin", before);
+        try
+        {
+            ++page_index_;
+            RebuildList();
+            if (first_card_)
+                brls::Application::giveFocus(first_card_);
+            load_more_pending_ = false;
+            LogUiAction("catalog.show_more.deferred", "ok",
+                "page=" + std::to_string(page_index_ + 1) +
+                " filtered=" + std::to_string(filtered_count_));
+        }
+        catch (const std::exception& exception)
+        {
+            load_more_pending_ = false;
+            LogUiAction("catalog.show_more.deferred", "error", exception.what());
+            ShowError("Store Pagination Failed", exception.what());
+        }
+        catch (...)
+        {
+            load_more_pending_ = false;
+            LogUiAction("catalog.show_more.deferred", "error", "unknown exception");
+            ShowError("Store Pagination Failed", "Unknown interface error.");
+        }
+    });
+}
+
+void CatalogTab::HandlePreviousPage()
+{
+    if (loading_ || load_more_pending_ || page_index_ == 0)
+        return;
+
+    load_more_pending_ = true;
+    brls::Application::giveFocus(search_button_);
+    const auto alive = alive_;
+    const auto generation = AppState::Instance().session_generation();
+    brls::sync([this, alive, generation]() {
+        if (!alive->load())
+            return;
+        if (AppState::Instance().session_generation() != generation)
+        {
+            load_more_pending_ = false;
+            return;
+        }
+        --page_index_;
+        RebuildList();
+        if (first_card_)
+            brls::Application::giveFocus(first_card_);
+        load_more_pending_ = false;
+        LogUiAction("catalog.previous_page.deferred", "ok",
+            "page=" + std::to_string(page_index_ + 1));
+    });
+}
+
+void CatalogTab::CycleStoreFilter()
+{
+    if (load_more_pending_)
+        return;
+    MoveFocusBeforeDestroy(list_container_, filter_button_);
+    store_filter_index_ = (store_filter_index_ + 1) % kStoreFilters.size();
+    page_index_         = 0;
+    RebuildList();
+    brls::Application::notify(Tr("Store filter: ") + std::string(kStoreFilters[store_filter_index_]));
+}
+
+void CatalogTab::CycleSortMode()
+{
+    if (load_more_pending_)
+        return;
+    MoveFocusBeforeDestroy(list_container_, sort_button_);
+    sort_mode_index_ = (sort_mode_index_ + 1) % kCatalogSortModes.size();
+    page_index_      = 0;
+    RebuildList();
+    brls::Application::notify(Tr("Sort: ") + std::string(kCatalogSortModes[sort_mode_index_]));
+}
+
+bool CatalogTab::OpenGameDialog(brls::View* view, size_t index)
+{
+    const auto& games_ = catalog_.page().games;
+    (void)view;
+
+    if (index >= games_.size())
+        return false;
+    if (AppState::Instance().session_generation() != catalog_session_generation_)
+        return false;
+
+    auto game = games_[index];
+    const auto& state = AppState::Instance();
+    if (state.HasSession())
+        for (const auto& owned : state.library_games())
+            game.is_in_library = game.is_in_library || library::SameGame(game, owned);
+    brls::Application::pushActivity(new brls::Activity(new GameDetailView(
+        client_, MakeCatalogGameDetail(game))));
+    return true;
+}
+
+} // namespace nxnow

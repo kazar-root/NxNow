@@ -1,0 +1,88 @@
+#pragma once
+
+#include "http_client.hpp"
+#include "models.hpp"
+#include "stream_settings.hpp"
+
+#include <functional>
+#include <map>
+#include <stdexcept>
+#include <vector>
+
+namespace nxnow
+{
+
+class ReauthenticationRequired : public std::runtime_error
+{
+  public:
+    using std::runtime_error::runtime_error;
+};
+
+class GfnClient
+{
+  public:
+    GfnClient();
+    static LoginProvider NvidiaLoginProvider();
+
+    std::vector<LoginProvider> FetchLoginProviders() const;
+    std::vector<PublicGame> FetchPublicGames() const;
+    // Local, account-scoped declarations; store licenses remain authoritative.
+    bool AddManualLibraryGame(const AuthSession& session, const PublicGame& game) const;
+    std::vector<PublicGame> LoadManualLibraryGames(const AuthSession& session) const;
+    CatalogPage FetchCatalogPage(
+        AuthSession& session, const std::string& search_query = {},
+        const std::string& cursor = {}, const std::string& interface_language = "en") const;
+    std::vector<GameInfo> FetchLibraryGames(AuthSession& session,
+        const std::string& interface_language = "en") const;
+    std::string FetchGameDescription(AuthSession& session, const std::string& game_id,
+        const std::string& title, const std::string& interface_language) const;
+    std::vector<StreamRegion> FetchStreamRegions(AuthSession& session) const;
+    std::vector<StreamRegion> MeasureStreamRegionLatencies(
+        std::vector<StreamRegion> regions) const;
+
+    AuthSession LoginWithQrCode(
+        const LoginProvider& provider,
+        const std::function<void(const QrLoginChallenge&)>& on_challenge,
+        const std::function<bool()>& is_cancelled) const;
+    AuthSession EnsureFreshSession(const AuthSession& session) const;
+    AuthSession EnsureFreshSavedSession(const AuthSession& session) const;
+    AuthSession ForceRefreshSavedSession(const AuthSession& session) const;
+    AuthSession RecoverSavedSession(
+        const AuthSession& session,
+        bool force_refresh = false) const;
+
+    SessionInfo StartSession(AuthSession& session, const std::string& launch_app_id,
+                             const StreamSettings& settings,
+                             const std::string& launch_store = "",
+                             const std::string& internal_title = "") const;
+    SessionInfo PollSession(AuthSession& session, const std::string& session_id) const;
+    void StopSession(AuthSession& session, const std::string& session_id) const;
+    void CleanupStaleCloudSession(AuthSession& session) const;
+
+    bool LoadSavedSession(AuthSession& session) const;
+    std::vector<AuthSession> LoadSavedSessions() const;
+    void SaveSession(const AuthSession& session) const;
+    bool SetActiveSavedSession(const std::string& user_id) const;
+    void ClearSavedSession() const;
+    void ClearAllSavedSessions() const;
+    void ClearAllNativeCredentials() const;
+    std::string LoadLauncherPreference(const std::string& user_id, const std::string& game_id) const;
+    void SaveLauncherPreference(const std::string& user_id, const std::string& game_id,
+                                const std::string& variant_id) const;
+
+    static constexpr const char* kUserAgent =
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+        "(KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36 "
+        "NVIDIACEFClient/HEAD/debb5919f6 GFN-PC/2.0.80.173";
+
+  private:
+    void AnswerQueueAds(AuthSession& auth, SessionInfo& info,
+                        std::vector<std::string> headers) const;
+    mutable std::string ad_session_key_;
+    mutable std::map<std::string, int> ad_attempts_;
+    mutable int ad_pending_polls_ = 0;
+    HttpClient http_client_;
+    std::string client_id_;
+};
+
+} // namespace nxnow
