@@ -2,7 +2,7 @@
 
 <img src="resources/icon/nxnow-logo-original.png" alt="NxNow logo" width="360" />
 
-# V0.2 NxNow
+# V0.2b NxNow
 
 ### Your PC games. Your Nintendo Switch. Anywhere.
 
@@ -15,6 +15,14 @@ Beautiful design · Multilingual experience · Controller-first navigation · Cl
 [**Download NxNow**](https://github.com/kazar-root/NxNow/releases) · [**Report an issue**](https://github.com/kazar-root/NxNow/issues) · [**Discover LunaNX**](https://github.com/kazar-root/LunaNX)
 
 </div>
+
+---
+
+## What's new in v0.2b
+
+**Small fix for fast-paced games (Counter-Strike 2…).** Since v0.2, a few pictures could stay waiting in line after a network or decoding hiccup, so everything you saw arrived one or two frames late for the rest of the session. NxNow now catches up to the newest picture as soon as such a delay persists, while still smoothing out tiny one-off hiccups. Shooters feel much more responsive again.
+
+> If the stream still stutters and the sound crackles, check your Wi-Fi first: get closer to your router and prefer 5 GHz.
 
 ---
 

@@ -1,7 +1,7 @@
 #pragma once
 
 #ifndef NXNOW_APP_VERSION
-#define NXNOW_APP_VERSION "0.2"
+#define NXNOW_APP_VERSION "0.2.1"
 #endif
 
 namespace nxnow

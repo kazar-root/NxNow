@@ -23,9 +23,9 @@ def verify(nro_path, resources):
         if title != "NxNow" or author != "KazaR-RooT":
             raise ValueError(f"Wrong HB Menu metadata for language {language}: {title}, {author}")
     version = c_string(nacp[0x3060:0x3070])
-    if version != "0.2":
+    if version != "0.2.1":
         raise ValueError(f"Wrong NRO version: {version}")
-    print("PASS HB Menu: NxNow / KazaR-RooT / 0.2; supplied icon; all 16 languages")
+    print("PASS HB Menu: NxNow / KazaR-RooT / 0.2.1; supplied icon; all 16 languages")
     offset, size = struct.unpack_from("<QQ", data, executable_size + 40)
     romfs = data[executable_size + offset:executable_size + offset + size]
     header = struct.unpack_from("<10Q", romfs)
