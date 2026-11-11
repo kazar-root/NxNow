@@ -18,7 +18,7 @@ struct StreamSettings
     std::string region    = "Auto";
     bool audio_enabled    = true;
     int audio_volume      = 1200;
-    int audio_buffer_ms   = 40;
+    int audio_buffer_ms   = 60;
     std::string video_backend = "Auto";
     bool debug_diagnostics = false;
     bool stats_overlay_enabled = false;

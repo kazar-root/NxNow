@@ -17,13 +17,14 @@ struct StreamModeTuning
 
 inline StreamModeTuning ResolveStreamMode(std::string_view mode, int fps)
 {
+    // Both modes share the bounded decode queue. Clearing it forces IDR
+    // recovery, so a one/two-frame bound turned every Wi-Fi burst or slow
+    // decode into a visible freeze. The modes now differ only in how long UDP
+    // reordering may hold a gap before it is treated as loss.
     if (mode == "Reinforced" || mode == "Pushed")
-        return {30, MaximumQueuedAccessUnits(fps), MaximumDecodeQueueDelayMs()};
+        return {30, MaximumQueuedAccessUnits(fps), MaximumDecodeQueueDelayMs(fps)};
 
-    // Keep a short opportunity for UDP reordering, then abandon late work.
-    // Encoded reference frames must still go through the existing IDR recovery
-    // path when dropped; never feed a broken reference chain to the decoder.
-    return {8, static_cast<std::size_t>(std::clamp((std::max(1, fps) + 29) / 30, 1, 2)), 33};
+    return {8, MaximumQueuedAccessUnits(fps), MaximumDecodeQueueDelayMs(fps)};
 }
 
 inline const char* StreamModeLabel(std::string_view mode)

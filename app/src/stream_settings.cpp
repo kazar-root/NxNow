@@ -273,6 +273,11 @@ StreamSettings LoadStreamSettings()
     if (gain_version < 4 && settings.audio_volume > 0 && settings.audio_volume <= 800)
         settings.audio_volume = std::max(800, std::min(1600, settings.audio_volume * 2));
     settings.audio_buffer_ms = JsonInt(root.get(), "audio_buffer_ms", settings.audio_buffer_ms);
+    // Version 1 raises the old 40 ms default once. Video no longer waits for
+    // the audio clock, so the extra reserve absorbs decode/network bursts
+    // without adding video latency.
+    if (JsonInt(root.get(), "audio_buffer_version", 0) < 1 && settings.audio_buffer_ms < 60)
+        settings.audio_buffer_ms = 60;
     settings.video_backend = JsonField(root.get(), "video_backend", settings.video_backend);
     settings.debug_diagnostics = JsonBool(root.get(), "debug_diagnostics", false);
     settings.stats_overlay_enabled = JsonBool(
@@ -328,6 +333,7 @@ bool SaveStreamSettings(const StreamSettings& settings)
     json_object_set_new(root.get(), "audio_volume", json_integer(clean.audio_volume));
     json_object_set_new(root.get(), "audio_gain_version", json_integer(4));
     json_object_set_new(root.get(), "audio_buffer_ms", json_integer(clean.audio_buffer_ms));
+    json_object_set_new(root.get(), "audio_buffer_version", json_integer(1));
     json_object_set_new(root.get(), "video_backend", json_string(clean.video_backend.c_str()));
     json_object_set_new(root.get(), "debug_diagnostics", json_boolean(clean.debug_diagnostics));
     json_object_set_new(

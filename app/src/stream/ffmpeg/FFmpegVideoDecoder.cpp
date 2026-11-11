@@ -164,10 +164,12 @@ int FFmpegVideoDecoder::setup(int video_format, int width, int height,
     // damage as visible macroblocks instead of holding the previous good frame.
     m_decoder_context->flags2 |= AV_CODEC_FLAG2_FAST;
 
-    // NVDEC submits asynchronously and does not benefit from CPU frame
-    // threads. The software fallback keeps one Tegra X1 core for UI/network.
+    // NVDEC submits asynchronously and does not benefit from CPU threads.
+    // Slice threading keeps software decoding parallel without holding
+    // dependent pictures in FFmpeg's frame-thread pipeline, which added
+    // (threads - 1) frames of latency. One Tegra X1 core stays for UI/network.
     const int decoder_threads = m_uses_hardware_frames ? 1 : 3;
-    m_decoder_context->thread_type = FF_THREAD_FRAME;
+    m_decoder_context->thread_type = m_uses_hardware_frames ? 0 : FF_THREAD_SLICE;
     m_decoder_context->thread_count = decoder_threads;
 
     m_decoder_context->width = width;
@@ -210,7 +212,11 @@ int FFmpegVideoDecoder::setup(int video_format, int width, int height,
         return err;
     }
 
-    AVFrameHolder::instance().prepare(m_uses_hardware_frames ? 3 : 4);
+    AVFrameHolder::instance().prepare(
+        nxnow::video::ReadyFrameQueueCapacity(),
+        nxnow::video::StartupReadyFrameDepth(),
+        std::chrono::microseconds(
+            nxnow::video::FrameWaitBudgetMicroseconds(redraw_rate)));
 
     // One extra frame for decoder output while the frame holder owns deep copies.
     m_frames_size = 5 + 1;

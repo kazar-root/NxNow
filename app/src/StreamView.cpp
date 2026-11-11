@@ -495,16 +495,17 @@ void StreamView::draw(NVGcontext* vg, float x, float y, float width, float heigh
         });
     }
     
-    // Basic drawing logic - if we have a frame, we draw it using GLVideoRenderer
+    // Present the newest decoded picture instead of pacing video against the
+    // audio playback clock. Audio-clock pacing added the audio buffer depth to
+    // video latency and held frames whenever audio playback stalled.
     bool got_frame = false;
-    const int64_t video_target = session_ ? session_->video_target_rtp_timestamp() : AV_NOPTS_VALUE;
     AVFrameHolder::instance().get([this, vg, width, height, &got_frame](AVFrame* frame, uint64_t generation, bool reused) {
         if (session_) {
             session_->draw(vg, width, height, frame, generation);
             got_frame = true;
             launcher_hint_.FirstFrame(std::chrono::steady_clock::now());
         }
-    }, video_target);
+    });
     if (session_)
         UpdatePerformanceCounter();
     
