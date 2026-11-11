@@ -374,7 +374,8 @@ CatalogPage ParseCatalogPage(JsonPtr& root, const std::string& cursor)
 
 std::string BuildCatalogRequestBody(
     const std::string& vpc_id, const std::string& search_query,
-    const std::string& cursor, const std::string& interface_language = "en")
+    const std::string& cursor, const std::string& interface_language = "en",
+    CatalogOrder order = CatalogOrder::Relevance)
 {
     static const char* kBrowseQuery = R"GRAPHQL(
 query GetFilterBrowseResults($vpcId: String!, $locale: String!, $sortString: String!, $fetchCount: Int!, $cursor: String!, $filters: AppFilterFields!) {
@@ -410,7 +411,10 @@ query GetSearchFilterResults($vpcId: String!, $locale: String!, $sortString: Str
     json_object_set_new(variables.get(), "locale", json_string(catalog::Locale(interface_language).c_str()));
     json_object_set_new(
         variables.get(), "sortString",
-        json_string("itemMetadata.relevance:DESC,sortName:ASC"));
+        // gfnPopularityRank is GeForce NOW's own ranking: 1 = most played.
+        json_string(order == CatalogOrder::Popularity
+            ? "itemMetadata.gfnPopularityRank:ASC,sortName:ASC"
+            : "itemMetadata.relevance:DESC,sortName:ASC"));
     json_object_set_new(variables.get(), "fetchCount", json_integer(kCatalogPageSize));
     json_object_set_new(variables.get(), "cursor", json_string(cursor.c_str()));
     json_object_set_new(variables.get(), "filters", json_object());
@@ -613,7 +617,7 @@ std::vector<PublicGame> GfnClient::FetchPublicGames() const
 
 CatalogPage GfnClient::FetchCatalogPage(
     AuthSession& session, const std::string& search_query, const std::string& cursor,
-    const std::string& interface_language) const
+    const std::string& interface_language, CatalogOrder order) const
 {
     session = RecoverSavedSession(session);
     std::string jwt_token = ResolveSessionJwt(session);
@@ -623,7 +627,7 @@ CatalogPage GfnClient::FetchCatalogPage(
         kGraphQlEndpoint,
         kUserAgent,
         BuildGraphQlPostHeaders(jwt_token),
-        BuildCatalogRequestBody(vpc_id, search_query, cursor, interface_language),
+        BuildCatalogRequestBody(vpc_id, search_query, cursor, interface_language, order),
         {}, {.max_body_bytes = kCatalogPageBytes});
 
     if (response.status_code == 401)
@@ -634,7 +638,7 @@ CatalogPage GfnClient::FetchCatalogPage(
             kGraphQlEndpoint,
             kUserAgent,
             BuildGraphQlPostHeaders(jwt_token),
-            BuildCatalogRequestBody(vpc_id, search_query, cursor, interface_language),
+            BuildCatalogRequestBody(vpc_id, search_query, cursor, interface_language, order),
             {}, {.max_body_bytes = kCatalogPageBytes});
     }
 
@@ -707,6 +711,7 @@ std::vector<GameInfo> GfnClient::FetchLibraryGames(AuthSession& session,
     }
 
     library::MergeManualGames(games, LoadManualLibraryGames(session));
+    library::RemoveHiddenGames(games, LoadHiddenLibraryGameIds(session));
     ApplyPlayHistory(games, LoadPlayHistory());
     return games;
 }

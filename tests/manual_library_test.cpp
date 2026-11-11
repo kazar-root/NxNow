@@ -39,6 +39,20 @@ int main()
     games[0].id = "live-id"; games[0].uuid = "live-uuid";
     nxnow::library::MergeManualGames(games, loaded);
     assert(games.size() == 1 && games[0].id == "live-id");
+    // Removing deletes the manual entry and hides the account game in NxNow.
+    const auto ids = nxnow::library::LibraryGameIds("catalog-uuid", "12345");
+    assert(client.RemoveLibraryGame(first, ids));
+    assert(client.LoadManualLibraryGames(first).empty());
+    const auto hidden = client.LoadHiddenLibraryGameIds(first);
+    assert(hidden.size() == 2);
+    std::vector<nxnow::GameInfo> account(1);
+    account[0].id = "account-id"; account[0].uuid = "catalog-uuid"; account[0].title = "Jeu";
+    nxnow::library::RemoveHiddenGames(account, hidden);
+    assert(account.empty());
+    // Adding it again from the catalog shows it again.
+    assert(client.AddManualLibraryGame(first, game));
+    assert(client.LoadHiddenLibraryGameIds(first).empty());
+    assert(client.LoadManualLibraryGames(first).size() == 1);
     std::filesystem::copy_file(directory + "/manual_library.json", directory + "/manual_library.json.bak");
     std::ofstream(directory + "/manual_library.json") << "interrupted write";
     assert(client.LoadManualLibraryGames(first).size() == 1);

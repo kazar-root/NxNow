@@ -11,8 +11,10 @@ struct TextKeySequence
     size_t size = 0;
 };
 
-// French VK/character positions follow Microsoft's kbdfr layout. Physical
-// strokes retain their scan code; text strokes also choose Shift/AltGr.
+// Text is typed by pressing, on the cloud PC's layout, the key that produces
+// each character. French positions follow Microsoft's kbdfr layout; strokes
+// carry the position (US key code + scan code) plus Shift/AltGr, and the
+// cloud PC turns that position into the character with its AZERTY layout.
 inline bool MapTextCharacter(char32_t c, KeyboardLayout layout, TextKeySequence& out)
 {
     out = {};
@@ -30,8 +32,9 @@ inline bool MapTextCharacter(char32_t c, KeyboardLayout layout, TextKeySequence&
         out.size = 1;
         if (layout == KeyboardLayout::German)
         {
-            if (c == U'y' || c == U'Y') out.strokes[0].scancode = 0x2c;
-            if (c == U'z' || c == U'Z') out.strokes[0].scancode = 0x15;
+            // QWERTZ swaps the Y and Z positions; send the key at that position.
+            if (c == U'y' || c == U'Y') out.strokes[0] = {'Z', 0x2c, out.strokes[0].modifiers};
+            if (c == U'z' || c == U'Z') out.strokes[0] = {'Y', 0x15, out.strokes[0].modifiers};
         }
         return true;
     }

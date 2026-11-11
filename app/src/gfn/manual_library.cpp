@@ -35,6 +35,37 @@ void Set(json_t* object, const char* key, const std::string& value)
 {
     json_object_set_new(object, key, json_string(value.c_str()));
 }
+bool Save(json_t* root)
+{
+    const auto destination = AppHomePath() + "/manual_library.json";
+    const auto temporary = destination + ".tmp";
+    if (json_dump_file(root, temporary.c_str(), JSON_INDENT(2) | JSON_SORT_KEYS) != 0)
+    {
+        std::remove(temporary.c_str()); return false;
+    }
+    return storage::ReplaceWithTemporaryFile(temporary, destination);
+}
+// Hidden GeForce NOW library games, per account: {"hidden": {"<scope>": [ids]}}.
+json_t* HiddenIds(json_t* root, const std::string& scope, bool create)
+{
+    auto* hidden = json_object_get(root, "hidden");
+    if (!json_is_object(hidden))
+    {
+        if (!create) return nullptr;
+        hidden = json_object(); json_object_set_new(root, "hidden", hidden);
+    }
+    auto* ids = json_object_get(hidden, scope.c_str());
+    if (!json_is_array(ids))
+    {
+        if (!create) return nullptr;
+        ids = json_array(); json_object_set_new(hidden, scope.c_str(), ids);
+    }
+    return ids;
+}
+bool Contains(const std::vector<std::string>& ids, const std::string& value)
+{
+    return !value.empty() && std::find(ids.begin(), ids.end(), value) != ids.end();
+}
 }
 
 std::vector<PublicGame> GfnClient::LoadManualLibraryGames(const AuthSession& session) const
@@ -81,9 +112,21 @@ bool GfnClient::AddManualLibraryGame(const AuthSession& session, const PublicGam
     {
         entries = json_array(); json_object_set_new(users, scope.c_str(), entries);
     }
+    // Adding a game again also shows it again if it had been removed.
+    bool unhidden = false;
+    if (auto* hidden = HiddenIds(root.get(), scope, false))
+        for (size_t i = json_array_size(hidden); i-- > 0;)
+        {
+            const char* id = json_string_value(json_array_get(hidden, i));
+            if (id && (id == game.id || id == game.uuid ||
+                       (!game.launch_app_id.empty() && id == game.launch_app_id)))
+            {
+                json_array_remove(hidden, i); unhidden = true;
+            }
+        }
     size_t index; json_t* existing;
     json_array_foreach(entries, index, existing)
-        if (String(existing, "id") == game.id) return true;
+        if (String(existing, "id") == game.id) return !unhidden || Save(root.get());
     if (json_array_size(entries) >= 2000) return false;
     Json entry(json_object(), json_decref);
     Set(entry.get(), "id", game.id); Set(entry.get(), "uuid", game.uuid);
@@ -98,12 +141,47 @@ bool GfnClient::AddManualLibraryGame(const AuthSession& session, const PublicGam
                                                "store", variant.store.c_str()));
     json_object_set_new(entry.get(), "variants", variants);
     json_array_append(entries, entry.get());
-    const auto destination = AppHomePath() + "/manual_library.json";
-    const auto temporary = destination + ".tmp";
-    if (json_dump_file(root.get(), temporary.c_str(), JSON_INDENT(2) | JSON_SORT_KEYS) != 0)
-    {
-        std::remove(temporary.c_str()); return false;
-    }
-    return storage::ReplaceWithTemporaryFile(temporary, destination);
+    return Save(root.get());
+}
+
+bool GfnClient::RemoveLibraryGame(const AuthSession& session, const std::vector<std::string>& game_ids) const
+{
+    std::vector<std::string> ids;
+    for (const auto& id : game_ids)
+        if (!id.empty() && !Contains(ids, id)) ids.push_back(id);
+    if (session.user.user_id.empty() || ids.empty()) return false;
+    PrepareAppStorage();
+    auto root = Read();
+    const auto scope = Scope(session);
+    auto* entries = json_object_get(json_object_get(root.get(), "users"), scope.c_str());
+    if (json_is_array(entries))
+        for (size_t i = json_array_size(entries); i-- > 0;)
+        {
+            auto* entry = json_array_get(entries, i);
+            if (Contains(ids, String(entry, "id")) || Contains(ids, String(entry, "uuid")) ||
+                Contains(ids, String(entry, "launch_app_id")))
+                json_array_remove(entries, i);
+        }
+    auto* hidden = HiddenIds(root.get(), scope, true);
+    std::vector<std::string> already;
+    size_t index; json_t* value;
+    json_array_foreach(hidden, index, value)
+        if (const char* id = json_string_value(value)) already.emplace_back(id);
+    for (const auto& id : ids)
+        if (!Contains(already, id) && json_array_size(hidden) < 4000)
+            json_array_append_new(hidden, json_string(id.c_str()));
+    return Save(root.get());
+}
+
+std::vector<std::string> GfnClient::LoadHiddenLibraryGameIds(const AuthSession& session) const
+{
+    std::vector<std::string> ids;
+    if (session.user.user_id.empty()) return ids;
+    const auto root = Read();
+    auto* hidden = HiddenIds(root.get(), Scope(session), false);
+    size_t index; json_t* value;
+    json_array_foreach(hidden, index, value)
+        if (const char* id = json_string_value(value)) ids.emplace_back(id);
+    return ids;
 }
 } // namespace nxnow

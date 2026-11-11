@@ -28,7 +28,7 @@ int main()
         launch.keyboard_layout = "auto";
         assert(launch == saved);
         saved.game_language = "en_GB";
-        saved.keyboard_layout = "fr-FR_azerty";
+        saved.keyboard_layout = "fr-FR";
         assert(nxnow::settings::ResolveLaunchSettings(saved) == saved);
     }
 }

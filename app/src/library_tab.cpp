@@ -183,7 +183,9 @@ void LibraryTab::willAppear(bool resetState)
     if (state.HasSession())
     {
         library::MergeManualGames(games_, client_.LoadManualLibraryGames(*state.session()));
+        library::RemoveHiddenGames(games_, client_.LoadHiddenLibraryGameIds(*state.session()));
         state.SetLibraryGames(games_);
+        seen_library_revision_ = state.library_revision();
     }
     favorites_ = library::LoadFavorites(ActiveUser()); RebuildList();
     const auto now = std::chrono::steady_clock::now();
@@ -276,6 +278,7 @@ void LibraryTab::ReloadLibrary(bool background)
                 last_library_sync_ = std::chrono::steady_clock::now();
                 current.SetSession(std::move(session));
                 current.SetLibraryGames(games_);
+                seen_library_revision_ = current.library_revision();
                 loading_ = false;
                 library_session_generation_ = generation;
                 RebuildList();
@@ -459,6 +462,17 @@ void LibraryTab::ShowInitialLoading(bool enabled)
 }
 void LibraryTab::draw(NVGcontext* vg, float x, float y, float w, float h, brls::Style style, brls::FrameContext* ctx)
 {
+    // A game page may add or remove a game while this tab stays underneath.
+    const auto& state = AppState::Instance();
+    if (seen_library_revision_ != state.library_revision() && !loading_ && !initial_loading_ &&
+        state.HasSession() && library_session_generation_ == state.session_generation())
+    {
+        seen_library_revision_ = state.library_revision();
+        games_ = state.library_games();
+        const bool owns_focus = IsViewInside(this, brls::Application::getCurrentFocus());
+        RebuildList();
+        if (owns_focus) brls::Application::giveFocus(getDefaultFocus());
+    }
     if (initial_loading_ && !loading_)
     {
         const bool settled = carousel_->PollArtwork();

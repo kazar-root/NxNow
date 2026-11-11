@@ -29,9 +29,15 @@ class GfnClient
     // Local, account-scoped declarations; store licenses remain authoritative.
     bool AddManualLibraryGame(const AuthSession& session, const PublicGame& game) const;
     std::vector<PublicGame> LoadManualLibraryGames(const AuthSession& session) const;
+    // Removes a game from the NxNow library: a manually added entry is deleted;
+    // a game from the GeForce NOW account is hidden in NxNow (adding it again
+    // from the catalogue shows it again).
+    bool RemoveLibraryGame(const AuthSession& session, const std::vector<std::string>& game_ids) const;
+    std::vector<std::string> LoadHiddenLibraryGameIds(const AuthSession& session) const;
     CatalogPage FetchCatalogPage(
         AuthSession& session, const std::string& search_query = {},
-        const std::string& cursor = {}, const std::string& interface_language = "en") const;
+        const std::string& cursor = {}, const std::string& interface_language = "en",
+        CatalogOrder order = CatalogOrder::Relevance) const;
     std::vector<GameInfo> FetchLibraryGames(AuthSession& session,
         const std::string& interface_language = "en") const;
     std::string FetchGameDescription(AuthSession& session, const std::string& game_id,

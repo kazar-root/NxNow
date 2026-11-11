@@ -50,6 +50,8 @@ class GameDetailView : public brls::Box
                                       const std::string& launch_app_id);
     void CreateSwitchShortcut();
     void AddToLibrary();
+    void ConfirmRemoveFromLibrary();
+    void RemoveFromLibrary();
     void OpenNteCredentialsMenu();
     void ConfigureNteCredentials();
     void UpdateNteButton();
@@ -61,6 +63,7 @@ class GameDetailView : public brls::Box
     ui::ActionRow* play_button_ = nullptr;
     ui::ActionRow* nte_button_ = nullptr;
     ui::ActionRow* add_library_button_ = nullptr;
+    ui::ActionRow* remove_library_button_ = nullptr;
     ui::NextStreamSummaryView* stream_summary_ = nullptr;
     brls::Label* description_label_ = nullptr;
     std::shared_ptr<std::atomic_bool> alive_ =
