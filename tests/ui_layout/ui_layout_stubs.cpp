@@ -222,7 +222,7 @@ std::vector<GameInfo> GfnClient::FetchLibraryGames(AuthSession&, const std::stri
     calls.library_languages.push_back(language);
     return library;
 }
-CatalogPage GfnClient::FetchCatalogPage(AuthSession&, const std::string& query, const std::string& cursor, const std::string&) const
+CatalogPage GfnClient::FetchCatalogPage(AuthSession&, const std::string& query, const std::string& cursor, const std::string&, CatalogOrder) const
 {
     std::lock_guard lock(fixture_mutex);
     ++calls.catalog_requests;

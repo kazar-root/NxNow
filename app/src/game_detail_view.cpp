@@ -228,6 +228,15 @@ GameDetailView::GameDetailView(const GfnClient& client, GameDetailData data, boo
         add_library_button_->setMarginBottom(8);
         actions->addView(add_library_button_);
     }
+    else if (AppState::Instance().HasSession())
+    {
+        remove_library_button_ = new ui::ActionRow(Tr("Remove from my library"), {},
+            [this](brls::View*) { ConfirmRemoveFromLibrary(); return true; },
+            ui::ActionTone::Destructive);
+        remove_library_button_->setId("detail/remove-library");
+        remove_library_button_->setMarginBottom(8);
+        actions->addView(remove_library_button_);
+    }
 
     auto* shortcut_button = new ui::ActionRow(Tr("Create Switch shortcut"), Tr("HOME screen"),
         [this](brls::View*) {
@@ -342,6 +351,54 @@ void GameDetailView::AddToLibrary()
     add_library_button_->SetTitle(Tr("In library"));
     play_button_->SetTitle(Tr("Play on GeForce NOW"));
     brls::Application::notify(Tr("Game added to your NxNow library"));
+}
+
+void GameDetailView::ConfirmRemoveFromLibrary()
+{
+    if (!data_.owned) return;
+    auto* dialog = new brls::Dialog(TrFormat(
+        "Remove {0} from your library?\n\nGames from your GeForce NOW account are only hidden in NxNow. You can add it again from the catalog at any time.",
+        {data_.title}));
+    const auto alive = alive_;
+    const auto generation = account_generation_;
+    dialog->addButton(Tr("Remove"), [this, alive, generation] {
+        if (!alive->load() || AppState::Instance().session_generation() != generation)
+            return;
+        RemoveFromLibrary();
+    });
+    dialog->addButton(Tr("Cancel"), [] {});
+    dialog->setCancelable(true);
+    dialog->open();
+}
+
+void GameDetailView::RemoveFromLibrary()
+{
+    auto& state = AppState::Instance();
+    if (!state.IsCurrentSession(account_generation_))
+    {
+        ShowError("Not Logged In", "Click the profile icon to sign in and find your games.");
+        return;
+    }
+    if (!data_.owned) return;
+    const auto ids = library::LibraryGameIds(data_.game_id, data_.launch_app_id);
+    if (!client_.RemoveLibraryGame(*state.session(), ids))
+    {
+        ShowError("Unable to remove the game", "Unable to save this change to the SD card.");
+        return;
+    }
+    auto games = state.library_games();
+    games.erase(std::remove_if(games.begin(), games.end(), [&](const GameInfo& game) {
+        return library::MatchesLibraryIds(game, ids);
+    }), games.end());
+    state.SetLibraryGames(std::move(games));
+    data_.owned = false;
+    if (remove_library_button_)
+    {
+        remove_library_button_->SetTitle(Tr("Removed from library"));
+        remove_library_button_->SetTone(ui::ActionTone::Flat);
+    }
+    play_button_->SetTitle(Tr("Play from Store"));
+    brls::Application::notify(Tr("Game removed from your library"));
 }
 
 void GameDetailView::LoadDescription()

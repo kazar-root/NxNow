@@ -11,8 +11,8 @@ namespace nxnow::input
 {
 using PhysicalKeys = std::bitset<256>;
 
-// USB HID usages are physical positions. Send their scan codes and the
-// layout-specific VK to the same layout requested on the cloud PC.
+// USB HID usages are physical positions. Send their scan code with the US
+// key code of the same position; the cloud PC applies its own layout.
 inline KeyboardStroke PhysicalKeyStroke(unsigned usage, KeyboardLayout layout = KeyboardLayout::Us)
 {
     KeyboardStroke key {};
@@ -79,25 +79,10 @@ inline KeyboardStroke PhysicalKeyStroke(unsigned usage, KeyboardLayout layout = 
             case 231: key.keycode = 0x5c; break;
         }
     }
-    if (layout == KeyboardLayout::French)
-    {
-        switch (usage)
-        {
-            case 4: key.keycode = 'Q'; break; case 20: key.keycode = 'A'; break;
-            case 26: key.keycode = 'Z'; break; case 29: key.keycode = 'W'; break;
-            case 16: key.keycode = 0xbc; break; case 51: key.keycode = 'M'; break;
-            case 45: key.keycode = 0xdb; break; case 46: key.keycode = 0xbb; break;
-            case 47: key.keycode = 0xdd; break; case 48: key.keycode = 0xba; break;
-            case 52: key.keycode = 0xc0; break; case 53: key.keycode = 0xde; break;
-            case 54: key.keycode = 0xbe; break; case 55: key.keycode = 0xbf; break;
-            case 56: key.keycode = 0xdf; break;
-        }
-    }
-    else if (layout == KeyboardLayout::German)
-    {
-        if (usage == 28) key.keycode = 'Z';
-        if (usage == 29) key.keycode = 'Y';
-    }
+    // GeForce NOW reads keys by position (US key codes) and applies the
+    // layout requested for the cloud PC itself. Translating here as well
+    // swapped A/Q, Z/W, M and punctuation twice on AZERTY/QWERTZ.
+    static_cast<void>(layout);
     key.modifiers = 0;
     return key;
 }

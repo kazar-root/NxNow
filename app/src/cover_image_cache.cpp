@@ -19,6 +19,8 @@
 #include <fstream>
 #include <iomanip>
 #include <iterator>
+#include <list>
+#include <unordered_map>
 #include <mutex>
 #include <optional>
 #include <sstream>
@@ -38,6 +40,95 @@ constexpr std::size_t kMaxImageBytes = 8 * 1024 * 1024;
 
 std::string LoadImageData(const std::string& image_url, const std::atomic_bool* cancelled,
     std::optional<std::uint64_t> requested_generation, std::size_t max_bytes = kMaxImageBytes);
+
+// Decoded catalogue thumbnails are kept as shared GPU textures so going back
+// to a game already seen shows its card at once instead of re-reading the SD
+// card, decoding the JPEG again and flashing the placeholder. Cards on screen
+// hold a reference; thumbnails no card shows any more stay within a small,
+// strict byte budget (least recently used dropped first), so a 200+ game
+// library cannot grow memory use or slow the console down. UI thread only.
+constexpr std::size_t kIdleThumbnailBudgetBytes = 6 * 1024 * 1024;
+
+struct ThumbnailTexture
+{
+    int texture = 0;
+    std::size_t bytes = 0;
+    std::size_t refs = 0;
+    bool idle = false;
+    std::list<std::string>::iterator idle_position {};
+};
+
+std::unordered_map<std::string, ThumbnailTexture> thumbnail_textures;
+std::unordered_map<int, std::string> thumbnail_urls;
+std::list<std::string> idle_thumbnails; // Most recently released first.
+std::size_t idle_thumbnail_bytes = 0;
+
+int AcquireThumbnailTexture(const std::string& image_url)
+{
+    const auto found = thumbnail_textures.find(image_url);
+    if (found == thumbnail_textures.end())
+        return 0;
+    auto& entry = found->second;
+    if (entry.idle)
+    {
+        idle_thumbnails.erase(entry.idle_position);
+        idle_thumbnail_bytes -= entry.bytes;
+        entry.idle = false;
+    }
+    ++entry.refs;
+    return entry.texture;
+}
+
+void RegisterThumbnailTexture(const std::string& image_url, int texture)
+{
+    int width = 0;
+    int height = 0;
+    nvgImageSize(brls::Application::getNVGContext(), texture, &width, &height);
+    ThumbnailTexture entry;
+    entry.texture = texture;
+    entry.bytes = static_cast<std::size_t>(std::max(width, 1)) *
+        static_cast<std::size_t>(std::max(height, 1)) * 4;
+    entry.refs = 1;
+    thumbnail_textures[image_url] = entry;
+    thumbnail_urls[texture] = image_url;
+}
+
+// Returns false when the texture is not a shared thumbnail.
+bool ReleaseThumbnailTexture(int texture)
+{
+    const auto url = thumbnail_urls.find(texture);
+    if (url == thumbnail_urls.end())
+        return false;
+    auto& entry = thumbnail_textures[url->second];
+    if (entry.refs > 0 && --entry.refs == 0)
+    {
+        idle_thumbnails.push_front(url->second);
+        entry.idle_position = idle_thumbnails.begin();
+        entry.idle = true;
+        idle_thumbnail_bytes += entry.bytes;
+    }
+
+    bool waited = false;
+    while (idle_thumbnail_bytes > kIdleThumbnailBudgetBytes && !idle_thumbnails.empty())
+    {
+        const std::string oldest = idle_thumbnails.back();
+        idle_thumbnails.pop_back();
+        const auto evicted = thumbnail_textures.find(oldest);
+        if (evicted == thumbnail_textures.end())
+            continue;
+        if (!waited)
+        {
+            // NanoVG/deko3d may still reference it from the last frame.
+            ui::WaitForImageGpu();
+            waited = true;
+        }
+        idle_thumbnail_bytes -= evicted->second.bytes;
+        nvgDeleteImage(brls::Application::getNVGContext(), evicted->second.texture);
+        thumbnail_urls.erase(evicted->second.texture);
+        thumbnail_textures.erase(evicted);
+    }
+    return true;
+}
 
 std::string ImageCachePath()
 {
@@ -121,6 +212,15 @@ CachedImage::~CachedImage()
     if (getTexture())
         ui::WaitForImageGpu();
 #endif
+    if (shared_thumbnail_ != 0)
+    {
+        const int texture = shared_thumbnail_;
+        shared_thumbnail_ = 0;
+        if (getTexture() == texture)
+            clear();
+        ReleaseThumbnailTexture(texture);
+        setFreeTexture(true);
+    }
 }
 
 void CachedImage::CancelPending()
@@ -162,6 +262,20 @@ void CachedImage::BeginRequest(const std::string& image_url, bool fallback, bool
         cancelled_->store(true);
     pending_url_ = image_url;
     ResetImage();
+    if (thumbnail_ && !image_url.empty())
+    {
+        const int cached = AcquireThumbnailTexture(image_url);
+        if (cached > 0)
+        {
+            setFreeTexture(false);
+            shared_thumbnail_ = cached;
+            innerSetImage(cached);
+            ready_ = true;
+            request_finished_ = true;
+            pending_url_.clear();
+            return;
+        }
+    }
     if (placeholder_ && (fallback || !image_url.empty()))
         setImageFromRes(kFallbackCoverRes);
     if (image_url.empty())
@@ -181,6 +295,16 @@ void CachedImage::ResetImage()
     if (getTexture())
         ui::WaitForImageGpu();
 #endif
+    if (shared_thumbnail_ != 0)
+    {
+        // The shared texture is never freed by this view: drop its reference.
+        const int texture = shared_thumbnail_;
+        shared_thumbnail_ = 0;
+        if (getTexture() == texture)
+            clear();
+        ReleaseThumbnailTexture(texture);
+        setFreeTexture(true);
+    }
     if (!getFreeTexture() && getTexture() != 0)
         brls::TextureCache::instance().removeCache(getTexture());
     clear();
@@ -240,15 +364,18 @@ void CachedImage::TrySubmit()
                 return;
             if ((thumbnail && !ui::SafeThumbnailData(data)) || (artwork && !ui::SafeArtworkData(data)))
                 data.clear();
-            brls::sync([this, cancelled, data = std::move(data)] {
+            brls::sync([this, cancelled, data = std::move(data), image_url, thumbnail] {
                 if (cancelled->load())
                     return;
                 request_finished_ = true;
                 if (data.empty())
                     return;
                 ResetImage();
-                setImageFromMem(reinterpret_cast<const unsigned char*>(data.data()),
-                    static_cast<int>(data.size()));
+                if (thumbnail)
+                    SetThumbnailTexture(image_url, data);
+                else
+                    setImageFromMem(reinterpret_cast<const unsigned char*>(data.data()),
+                        static_cast<int>(data.size()));
                 ready_ = getTexture() != 0;
                 if (!ready_ && placeholder_)
                     setImageFromRes(kFallbackCoverRes);
@@ -256,6 +383,24 @@ void CachedImage::TrySubmit()
         });
     if (accepted)
         pending_url_.clear();
+}
+
+void CachedImage::SetThumbnailTexture(const std::string& image_url, const std::string& data)
+{
+    // Another card may have finished the same picture first; share its texture.
+    int texture = AcquireThumbnailTexture(image_url);
+    if (texture <= 0)
+    {
+        texture = nvgCreateImageMem(brls::Application::getNVGContext(), 0,
+            const_cast<unsigned char*>(reinterpret_cast<const unsigned char*>(data.data())),
+            static_cast<int>(data.size()));
+        if (texture <= 0)
+            return;
+        RegisterThumbnailTexture(image_url, texture);
+    }
+    setFreeTexture(false);
+    shared_thumbnail_ = texture;
+    innerSetImage(texture);
 }
 
 void ShutdownCoverImageWorker()

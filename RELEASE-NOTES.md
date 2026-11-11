@@ -1,16 +1,18 @@
 # NxNow v0.2b
 
-**A small fix for fast-paced games such as Counter-Strike 2.**
+**This update brings a popularity ranking, library management, a fully working on-screen keyboard and smoother streams.**
 
-## Fix
+## What's new
 
-- **No more lingering input lag.** Since v0.2, a few pictures could stay waiting in line after a
-  network or decoding hiccup, so everything on screen arrived one or two frames late for the rest
-  of the session. WoW or Diablo hardly show it, but shooters do. NxNow now catches up to the newest
-  picture as soon as such a delay persists, while still smoothing out tiny one-off hiccups.
+- **Most popular games.** The catalog has a new *Most popular games* view, ranked by GeForce NOW's own popularity ranking (sign-in required). Also available from the main menu.
+- **Add or remove games from your library.** The page of any game in your library now offers *Remove from my library*, next to *I own this game* in the catalog. Games you added in NxNow are deleted; games from your GeForce NOW account are hidden in NxNow and can be added back from the catalog at any time.
+- **Fully working on-screen keyboard.** Every character, including digits, symbols and accents, now arrives exactly as typed in chats and text fields. NxNow automatically follows your console's keyboard layout (AZERTY, QWERTY, QWERTZ…) and sets the cloud PC to match.
+- **Smoother audio and video streams.** Improved handling of the audio and video streams: the picture now catches up instantly after a network or decoding hiccup, so fast-paced games such as Counter-Strike 2 stay responsive.
+- **Faster catalog browsing.** Game thumbnails you have already seen show up instantly, using a small, strictly limited amount of memory.
+- **Purple and white paging buttons** that match the NxNow look.
 
 > **Tip:** if the stream still stutters and the sound crackles, check your Wi-Fi first: get closer
-> to your router and prefer 5 GHz.
+> to your router and prefer 5 GHz. To apply the keyboard layout, start a new GeForce NOW session.
 
 Everything from v0.2 (smoother video, lower latency, steadier sound) is included.
 
@@ -36,5 +38,5 @@ The app and the Homebrew Menu show this version as **0.2.1**.
 SHA-256 (`NxNow.nro`):
 
 ```
-321c47ae47640adb69d5b7feabb363bdae577ff1d6316da661f78b36fba1d47a
+9329ce14562f0ee20e930acb3f4eb7da71c93a06d32f3ff0ae32b2005eb3970d
 ```

@@ -256,7 +256,7 @@ void TopBarFrame::ShowAccount()
 void TopBarFrame::ShowMainMenu()
 {
     auto* dropdown = new brls::Dropdown(Tr("Main menu"),
-        {Tr("Library"), Tr("Favorites"), Tr("Search"), Tr("Library options"), Tr("Settings"), Tr("Controls & help"), Tr("GeForce NOW catalog"), Tr("Free-to-play games")},
+        {Tr("Library"), Tr("Favorites"), Tr("Search"), Tr("Library options"), Tr("Settings"), Tr("Controls & help"), Tr("GeForce NOW catalog"), Tr("Free-to-play games"), Tr("Most popular games")},
         [](int) {}, 0, [this, alive = alive_](int item) {
             if (!alive->load() || item < 0) return;
             switch (item) {
@@ -268,6 +268,7 @@ void TopBarFrame::ShowMainMenu()
                 case 5: brls::Application::pushActivity(new brls::Activity(new ControlsHelpView())); break;
                 case 6: SelectTab(kCatalogTab); dynamic_cast<CatalogTab*>(active_content_)->SetBrowseMode(0); break;
                 case 7: SelectTab(kCatalogTab); dynamic_cast<CatalogTab*>(active_content_)->SetBrowseMode(1); break;
+                case 8: SelectTab(kCatalogTab); dynamic_cast<CatalogTab*>(active_content_)->SetBrowseMode(3); break;
                 default: break;
             }
             UpdateStatusBar(true);

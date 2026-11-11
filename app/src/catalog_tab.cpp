@@ -17,6 +17,7 @@
 #include <array>
 #include <cctype>
 #include <utility>
+#include <vector>
 
 namespace nxnow
 {
@@ -27,7 +28,38 @@ constexpr size_t kInitialVisibleGameLimit = 10;
 constexpr size_t kCardsPerRow      = 5;
 constexpr std::array<const char*, 6> kStoreFilters = {"All", "Steam", "Epic", "Ubisoft", "Xbox", "Battle.net"};
 constexpr std::array<const char*, 3> kCatalogSortModes = {"A-Z", "Store", "Publisher"};
-constexpr std::array<const char*, 3> kBrowseModes = {"All games", "Free-to-play games", "Games not in my library"};
+constexpr std::array<const char*, 4> kBrowseModes = {
+    "All games", "Free-to-play games", "Games not in my library", "Most popular games"};
+// Asks GeForce NOW for its popularity ranking (most played first) and keeps
+// that order instead of re-sorting A-Z.
+constexpr size_t kMostPopularBrowseMode = 3;
+
+// Paging buttons follow the NxNow purple and white palette: "Next page" is a
+// solid purple call to action, "Previous page" a dark purple outlined button.
+const brls::ButtonStyle kNextPageStyle = {
+    .shadowType              = brls::ShadowType::NONE,
+    .hideHighlightBackground = true,
+    .highlightPadding        = "brls/button/primary_highlight_padding",
+    .borderThickness         = "",
+    .enabledBackgroundColor  = "brls/accent",
+    .enabledLabelColor       = "brls/text",
+    .enabledBorderColor      = "",
+    .disabledBackgroundColor = "brls/highlight/background",
+    .disabledLabelColor      = "brls/text_disabled",
+    .disabledBorderColor     = "",
+};
+const brls::ButtonStyle kPreviousPageStyle = {
+    .shadowType              = brls::ShadowType::NONE,
+    .hideHighlightBackground = true,
+    .highlightPadding        = "brls/button/primary_highlight_padding",
+    .borderThickness         = "brls/button/border_thickness",
+    .enabledBackgroundColor  = "brls/highlight/background",
+    .enabledLabelColor       = "brls/text",
+    .enabledBorderColor      = "brls/accent",
+    .disabledBackgroundColor = "brls/highlight/background",
+    .disabledLabelColor      = "brls/text_disabled",
+    .disabledBorderColor     = "brls/accent",
+};
 
 brls::Label* MakeParagraph(const std::string& text, float bottom_margin = 16.0f)
 {
@@ -93,8 +125,9 @@ CatalogTab::CatalogTab()
     });
     filter_button_->registerClickAction([this](brls::View*) {
         return RunUiAction("catalog.filter.button", [this]() {
-            auto* menu = new brls::Dropdown(Tr("Browse games"),
-                {Tr(kBrowseModes[0]), Tr(kBrowseModes[1]), Tr(kBrowseModes[2])},
+            std::vector<std::string> modes;
+            for (const char* mode : kBrowseModes) modes.push_back(Tr(mode));
+            auto* menu = new brls::Dropdown(Tr("Browse games"), modes,
                 [this, alive = alive_](int selected) {
                     if (alive->load() && selected >= 0) SetBrowseMode(static_cast<size_t>(selected));
                 }, static_cast<int>(browse_mode_));
@@ -265,7 +298,9 @@ void CatalogTab::ReloadCatalog(bool append)
         {
             CatalogPage page;
             if (authenticated && browse_mode != 1)
-                page = client.FetchCatalogPage(session, server_query, cursor, language);
+                page = client.FetchCatalogPage(session, server_query, cursor, language,
+                    browse_mode == kMostPopularBrowseMode ? CatalogOrder::Popularity
+                                                          : CatalogOrder::Relevance);
             else
             {
                 page.games = client.FetchPublicGames();
@@ -357,12 +392,13 @@ void CatalogTab::RebuildList()
 
     std::vector<size_t> filtered_indices;
     std::string lower_query = ToLower(search_query_);
+    const auto hidden = HiddenLibraryIds();
 
     for (size_t i = 0; i < games_.size(); ++i)
     {
         const PublicGame& game = games_[i];
         const bool matches_query = lower_query.empty() || ToLower(game.title).find(lower_query) != std::string::npos;
-        bool owned = game.is_in_library;
+        bool owned = IsShownAsOwned(game, hidden);
         if (AppState::Instance().HasSession())
             for (const auto& item : AppState::Instance().library_games())
                 owned = owned || library::SameGame(game, item);
@@ -373,6 +409,7 @@ void CatalogTab::RebuildList()
         }
     }
 
+    if (browse_mode_ != kMostPopularBrowseMode)
     std::sort(filtered_indices.begin(), filtered_indices.end(), [this, &games_](size_t left_index, size_t right_index) {
         const PublicGame& left = games_[left_index];
         const PublicGame& right = games_[right_index];
@@ -398,6 +435,8 @@ void CatalogTab::RebuildList()
         std::to_string(filtered_count_), std::to_string(page_index_ + 1), std::to_string(total_pages)});
     if (catalog_.page().next_cursor)
         status += " · " + Tr("More games available online");
+    if (browse_mode_ == kMostPopularBrowseMode && !AppState::Instance().HasSession())
+        status += " · " + Tr("Sign in to rank games by popularity");
 
     status_label_->setText(status);
     const auto& state = AppState::Instance();
@@ -436,7 +475,7 @@ void CatalogTab::RebuildList()
             display.title     = game.title;
             display.subtitle  = game_detail::IsUnknownMetadata(game.store) ? "" : game.store;
             display.badge     = game_detail::IsUnknownMetadata(game.publisher) ? "" : game.publisher;
-            display.in_library = game.is_in_library;
+            display.in_library = IsShownAsOwned(game, hidden);
             display.image_url = game.image_url;
             display.compact = true;
 
@@ -482,7 +521,7 @@ void CatalogTab::EnsurePagingButton()
 
     previous_page_button_ = new brls::Button();
     previous_page_button_->setId("catalog-previous");
-    previous_page_button_->setStyle(&brls::BUTTONSTYLE_BORDERED);
+    previous_page_button_->setStyle(&kPreviousPageStyle);
     previous_page_button_->setMarginRight(12);
     previous_page_button_->setGrow(1.0f);
     previous_page_button_->registerClickAction([this](brls::View*) {
@@ -494,7 +533,7 @@ void CatalogTab::EnsurePagingButton()
 
     load_more_button_ = new brls::Button();
     load_more_button_->setId("catalog-next");
-    load_more_button_->setStyle(&brls::BUTTONSTYLE_PRIMARY);
+    load_more_button_->setStyle(&kNextPageStyle);
     load_more_button_->setGrow(1.0f);
     load_more_button_->registerClickAction([this](brls::View*) {
         return RunUiAction("catalog.show_more.button", [this]() {
@@ -638,6 +677,24 @@ void CatalogTab::CycleSortMode()
     brls::Application::notify(Tr("Sort: ") + std::string(kCatalogSortModes[sort_mode_index_]));
 }
 
+std::vector<std::string> CatalogTab::HiddenLibraryIds() const
+{
+    const auto& state = AppState::Instance();
+    return state.HasSession() ? client_.LoadHiddenLibraryGameIds(*state.session())
+                              : std::vector<std::string> {};
+}
+
+// A game removed from the NxNow library is no longer shown as owned, so the
+// game page offers to add it again.
+bool CatalogTab::IsShownAsOwned(const PublicGame& game, const std::vector<std::string>& hidden)
+{
+    if (!game.is_in_library) return false;
+    const auto has = [&](const std::string& value) {
+        return !value.empty() && std::find(hidden.begin(), hidden.end(), value) != hidden.end();
+    };
+    return !has(game.id) && !has(game.uuid) && !has(game.launch_app_id);
+}
+
 bool CatalogTab::OpenGameDialog(brls::View* view, size_t index)
 {
     const auto& games_ = catalog_.page().games;
@@ -650,6 +707,7 @@ bool CatalogTab::OpenGameDialog(brls::View* view, size_t index)
 
     auto game = games_[index];
     const auto& state = AppState::Instance();
+    game.is_in_library = IsShownAsOwned(game, HiddenLibraryIds());
     if (state.HasSession())
         for (const auto& owned : state.library_games())
             game.is_in_library = game.is_in_library || library::SameGame(game, owned);

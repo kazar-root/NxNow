@@ -30,6 +30,28 @@ inline bool SameGame(const PublicGame& item, const GameInfo& game)
             return variant.id == launch_id;
         }));
 }
+// Identifiers that designate a library game (used to remove / hide it).
+inline std::vector<std::string> LibraryGameIds(const std::string& game_id, const std::string& launch_app_id)
+{
+    std::vector<std::string> ids;
+    if (!game_id.empty()) ids.push_back(game_id);
+    if (!launch_app_id.empty() && launch_app_id != game_id) ids.push_back(launch_app_id);
+    return ids;
+}
+inline bool MatchesLibraryIds(const GameInfo& game, const std::vector<std::string>& ids)
+{
+    const auto has = [&](const std::string& value) {
+        return !value.empty() && std::find(ids.begin(), ids.end(), value) != ids.end();
+    };
+    return has(game.id) || has(game.uuid) || has(game.launch_app_id);
+}
+inline void RemoveHiddenGames(std::vector<GameInfo>& games, const std::vector<std::string>& hidden)
+{
+    if (hidden.empty()) return;
+    games.erase(std::remove_if(games.begin(), games.end(), [&](const GameInfo& game) {
+        return MatchesLibraryIds(game, hidden);
+    }), games.end());
+}
 inline void MergeManualGames(std::vector<GameInfo>& games, const std::vector<PublicGame>& manual)
 {
     for (const auto& item : manual)

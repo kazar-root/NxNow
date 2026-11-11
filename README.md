@@ -20,7 +20,12 @@ Beautiful design · Multilingual experience · Controller-first navigation · Cl
 
 ## What's new in v0.2b
 
-**Small fix for fast-paced games (Counter-Strike 2…).** Since v0.2, a few pictures could stay waiting in line after a network or decoding hiccup, so everything you saw arrived one or two frames late for the rest of the session. NxNow now catches up to the newest picture as soon as such a delay persists, while still smoothing out tiny one-off hiccups. Shooters feel much more responsive again.
+- **Most popular games.** The catalog has a new *Most popular games* view, ranked by GeForce NOW's own popularity ranking (sign-in required). Also available from the main menu.
+- **Add or remove games from your library.** The page of any game in your library now offers *Remove from my library*, next to *I own this game* in the catalog. Games you added in NxNow are deleted; games from your GeForce NOW account are hidden in NxNow and can be added back from the catalog at any time.
+- **Fully working on-screen keyboard.** Every character, including digits, symbols and accents, now arrives exactly as typed in chats and text fields. NxNow automatically follows your console's keyboard layout (AZERTY, QWERTY, QWERTZ…) and sets the cloud PC to match.
+- **Smoother audio and video streams.** Improved handling of the audio and video streams: the picture now catches up instantly after a network or decoding hiccup, so fast-paced games such as Counter-Strike 2 stay responsive.
+- **Faster catalog browsing.** Game thumbnails you have already seen show up instantly, using a small, strictly limited amount of memory.
+- **Purple and white paging buttons** that match the NxNow look.
 
 > If the stream still stutters and the sound crackles, check your Wi-Fi first: get closer to your router and prefer 5 GHz.
 

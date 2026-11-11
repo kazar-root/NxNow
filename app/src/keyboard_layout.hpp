@@ -26,29 +26,46 @@ inline KeyboardLayout KeyboardLayoutForLocale(std::string locale)
     if (locale.starts_with("zh")) return KeyboardLayout::SimplifiedChinese;
     return KeyboardLayout::Us;
 }
+// GeForce NOW only accepts its own layout identifiers (the ones its official
+// clients send). An unknown value such as "fr-FR_azerty" is silently replaced
+// by en-US on the cloud PC, so AZERTY-mapped text then types wrong symbols.
 inline const char* CloudKeyboardLayout(KeyboardLayout layout)
 {
     switch (layout)
     {
-        case KeyboardLayout::French: return "fr-FR_azerty";
-        case KeyboardLayout::FrenchCanadian: return "fr-CA_qwerty";
-        case KeyboardLayout::Uk: return "en-GB_qwerty";
-        case KeyboardLayout::German: return "de-DE_qwertz";
-        case KeyboardLayout::Spanish: return "es-ES_qwerty";
-        case KeyboardLayout::LatinSpanish: return "es-MX_qwerty";
-        case KeyboardLayout::Italian: return "it-IT_qwerty";
-        case KeyboardLayout::Portuguese: return "pt-PT_qwerty";
-        case KeyboardLayout::Russian: return "ru-RU_qwerty";
-        case KeyboardLayout::Japanese: return "ja-JP_qwerty";
-        case KeyboardLayout::Korean: return "ko-KR_qwerty";
-        case KeyboardLayout::SimplifiedChinese: return "zh-CN_qwerty";
-        case KeyboardLayout::TraditionalChinese: return "zh-TW_qwerty";
-        default: return "en-US_qwerty";
+        case KeyboardLayout::French: return "fr-FR";
+        case KeyboardLayout::Uk: return "en-GB";
+        case KeyboardLayout::German: return "de-DE";
+        case KeyboardLayout::Spanish: return "es-ES_tradnl";
+        case KeyboardLayout::LatinSpanish: return "es-MX";
+        case KeyboardLayout::Italian: return "it-IT";
+        case KeyboardLayout::Portuguese: return "pt-PT";
+        case KeyboardLayout::Russian: return "ru-RU";
+        case KeyboardLayout::Japanese: return "ja-106";
+        case KeyboardLayout::Korean: return "ko-KR";
+        case KeyboardLayout::SimplifiedChinese: return "zh-CN";
+        case KeyboardLayout::TraditionalChinese: return "zh-TW";
+        // GeForce NOW has no Canadian French layout; text for it is mapped
+        // with US key positions, so request the matching US layout.
+        default: return "en-US";
     }
 }
 inline KeyboardLayout KeyboardLayoutForCloudCode(std::string_view code)
 {
-    for (auto layout : {KeyboardLayout::French, KeyboardLayout::FrenchCanadian, KeyboardLayout::Uk,
+    // Older builds saved/sent "<locale>_<azerty|qwerty|qwertz>" identifiers.
+    if (const auto underscore = code.find('_');
+        underscore != std::string_view::npos && code.substr(underscore) != "_tradnl")
+    {
+        const auto suffix = code.substr(underscore + 1);
+        if (suffix == "azerty" || suffix == "qwerty" || suffix == "qwertz")
+        {
+            if (code.substr(0, underscore) == "fr-CA") return KeyboardLayout::FrenchCanadian;
+            code = code.substr(0, underscore);
+        }
+    }
+    if (code == "es-ES") return KeyboardLayout::Spanish;
+    if (code == "ja-JP") return KeyboardLayout::Japanese;
+    for (auto layout : {KeyboardLayout::French, KeyboardLayout::Uk,
          KeyboardLayout::German, KeyboardLayout::Spanish, KeyboardLayout::LatinSpanish,
          KeyboardLayout::Italian, KeyboardLayout::Portuguese, KeyboardLayout::Russian,
          KeyboardLayout::Japanese, KeyboardLayout::Korean, KeyboardLayout::SimplifiedChinese,

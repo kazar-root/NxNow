@@ -51,9 +51,11 @@ class CachedImage : public brls::Image
     void BeginRequest(const std::string& image_url, bool fallback, bool placeholder, bool thumbnail = false);
     void ResetImage();
     void TrySubmit();
+    void SetThumbnailTexture(const std::string& image_url, const std::string& data);
     std::shared_ptr<std::atomic_bool> cancelled_;
     std::string pending_url_;
     std::uint64_t requested_generation_ = 0;
+    int shared_thumbnail_ = 0;
     std::chrono::steady_clock::time_point next_submission_ {};
 };
 

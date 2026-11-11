@@ -111,6 +111,9 @@ struct PublicGame
     std::string description_language;
 };
 
+// Order of the server catalogue: GeForce NOW "relevance" or its popularity rank.
+enum class CatalogOrder { Relevance, Popularity };
+
 struct CatalogPage
 {
     std::vector<PublicGame> games;

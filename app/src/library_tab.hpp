@@ -67,6 +67,7 @@ class LibraryTab : public brls::Box
     size_t page_index_ = 0, page_count_ = 0, filtered_count_ = 0;
     std::chrono::steady_clock::time_point artwork_wait_started_ {};
     std::uint64_t library_session_generation_ = 0;
+    std::uint64_t seen_library_revision_ = 0;
     std::chrono::steady_clock::time_point last_library_sync_ {};
 };
 }

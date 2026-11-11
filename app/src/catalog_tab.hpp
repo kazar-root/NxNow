@@ -37,6 +37,8 @@ class CatalogTab : public brls::Box
     void CycleStoreFilter();
     void CycleSortMode();
     bool OpenGameDialog(brls::View* view, size_t index);
+    std::vector<std::string> HiddenLibraryIds() const;
+    static bool IsShownAsOwned(const PublicGame& game, const std::vector<std::string>& hidden);
 
     GfnClient client_;
     CatalogListing catalog_;
