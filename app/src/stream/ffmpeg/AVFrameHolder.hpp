@@ -46,6 +46,7 @@ public:
     [[nodiscard]] size_t getMaximumConsecutiveReuse() const;
     [[nodiscard]] size_t getSourceClockPresentStat() const;
     [[nodiscard]] size_t getClockBypassPresentStat() const;
+    [[nodiscard]] size_t getCatchUpDropStat() const;
 
     void cleanup();
 
@@ -88,6 +89,9 @@ private:
     size_t maximumConsecutiveReuse = 0;
     size_t sourceClockPresentStat = 0;
     size_t clockBypassPresentStat = 0;
+    static constexpr size_t kBacklogTicksBeforeCatchUp = 3;
+    size_t backlogTicks = 0;
+    size_t catchUpDroppedStat = 0;
 };
 
 class AVFrameHolder : public Singleton<AVFrameHolder> {
@@ -148,6 +152,7 @@ class AVFrameHolder : public Singleton<AVFrameHolder> {
     [[nodiscard]] size_t getMaximumConsecutiveReuse() const { return m_frame_queue.getMaximumConsecutiveReuse(); }
     [[nodiscard]] size_t getSourceClockPresentStat() const { return m_frame_queue.getSourceClockPresentStat(); }
     [[nodiscard]] size_t getClockBypassPresentStat() const { return m_frame_queue.getClockBypassPresentStat(); }
+    [[nodiscard]] size_t getCatchUpDropStat() const { return m_frame_queue.getCatchUpDropStat(); }
     [[nodiscard]] size_t getFrameQueueSize() const { return m_frame_queue.size(); }
 
   private:

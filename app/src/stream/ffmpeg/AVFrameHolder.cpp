@@ -214,6 +214,28 @@ AVFrame* AVFrameQueue::pop(bool& reused, uint64_t& generation, int64_t target_pt
         // deadlines until WebRTC supplies a correlated media clock.
         pacingEarlyToleranceTicks = 0;
         lastPacingPhaseTicks = 0;
+
+        // Pure FIFO presentation never drains a backlog: once a decode burst
+        // (or the two-picture startup reserve) leaves extra pictures queued,
+        // every later picture is shown that many display ticks late. Fast
+        // games feel this as input lag. Absorb a one-tick burst, but jump to
+        // the newest picture when the backlog persists or exceeds one frame.
+        if (presentationStarted && queue.size() > 1) {
+            backlogTicks++;
+            if (queue.size() > 2 || backlogTicks >= kBacklogTicksBeforeCatchUp) {
+                while (queue.size() > 1) {
+                    AVFrame* dropped = queue.front();
+                    queue.pop_front();
+                    generations.pop_front();
+                    av_frame_free(&dropped);
+                    framesDroppedStat++;
+                    catchUpDroppedStat++;
+                }
+                backlogTicks = 0;
+            }
+        } else {
+            backlogTicks = 0;
+        }
     }
 
     if (!queue.empty()) {
@@ -360,6 +382,11 @@ size_t AVFrameQueue::getClockBypassPresentStat() const {
     return clockBypassPresentStat;
 }
 
+size_t AVFrameQueue::getCatchUpDropStat() const {
+    std::lock_guard<std::mutex> lock(m_mutex);
+    return catchUpDroppedStat;
+}
+
 void AVFrameQueue::cleanup() {
     std::lock_guard<std::mutex> lock(m_mutex);
     while (!queue.empty()) {
@@ -403,4 +430,6 @@ void AVFrameQueue::cleanup() {
     maximumConsecutiveReuse = 0;
     sourceClockPresentStat = 0;
     clockBypassPresentStat = 0;
+    backlogTicks = 0;
+    catchUpDroppedStat = 0;
 }

@@ -57,6 +57,25 @@ int main()
     assert(queue.pop(reused, generation));
     assert(!reused && generation == 8 && queue.size() == 2);
 
+    // Without a media clock, a one-tick burst is absorbed in order, but a
+    // standing backlog or a deeper burst jumps to the newest picture.
+    queue.cleanup();
+    push(queue, 90000);
+    push(queue, 91500);
+    assert(queue.pop(reused, generation)->pts == 90000); // startup reserve
+    push(queue, 93000);
+    assert(queue.pop(reused, generation)->pts == 91500); // backlog tick 1
+    push(queue, 94500);
+    assert(queue.pop(reused, generation)->pts == 93000); // backlog tick 2
+    push(queue, 96000);
+    assert(queue.pop(reused, generation)->pts == 96000); // tick 3: catch up
+    assert(queue.size() == 0 && queue.getCatchUpDropStat() == 1);
+    push(queue, 97500);
+    push(queue, 99000);
+    push(queue, 100500);
+    assert(queue.pop(reused, generation)->pts == 100500); // burst > 1 frame
+    assert(queue.size() == 0 && queue.getCatchUpDropStat() == 3);
+
     // With a media clock, tolerance follows the observed 1500-tick cadence.
     queue.cleanup();
     push(queue, 90000);
