@@ -16,6 +16,30 @@ struct FrameTimingPolicy {
     int32_t maximum_early_ticks = 750;
 };
 
+inline int32_t AdaptiveEarlyToleranceTicks(int32_t producer_interval_ticks)
+{
+    // Keep normal presentation within roughly 10% of the source period.
+    // This prevents consuming a future frame early and then repeating the
+    // previous picture on the following display tick.
+    if (producer_interval_ticks <= 0)
+        return 180;
+    return producer_interval_ticks < 900
+               ? 90
+               : producer_interval_ticks > 3000
+                     ? 300
+                     : producer_interval_ticks / 10;
+}
+
+inline int32_t RecoveryEarlyToleranceTicks(int32_t producer_interval_ticks)
+{
+    // After one repeated display tick, allow a near-future frame through.
+    // This bounds repeat streaks without carrying a permanent extra frame.
+    if (producer_interval_ticks <= 0)
+        return 500;
+    const int32_t tolerance = producer_interval_ticks / 3;
+    return tolerance < 300 ? 300 : tolerance > 600 ? 600 : tolerance;
+}
+
 inline int32_t RtpDelta(uint32_t timestamp, uint32_t target)
 {
     return static_cast<int32_t>(timestamp - target);

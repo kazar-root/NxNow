@@ -1,5 +1,5 @@
 param(
-    [string]$Version = "0.1",
+    [string]$Version = "0.2",
     [string]$BuildDirectory = "switch"
 )
 $ErrorActionPreference = "Stop"

@@ -143,6 +143,22 @@ int main()
               "legacy audio gain migration remains compatible");
     }
 
+    for (const auto& [body, buffer_ms] : {
+             std::pair{R"({"audio_buffer_ms":40})", 60},
+             std::pair{R"({"audio_buffer_ms":80})", 80},
+             std::pair{R"({"audio_buffer_ms":40,"audio_buffer_version":1})", 40},
+             std::pair{R"({"fps":30})", 60}})
+    {
+        Write("", body);
+        Check(nxnow::LoadStreamSettings().audio_buffer_ms == buffer_ms,
+              "audio buffer default migrates once to 60 ms");
+    }
+    settings = nxnow::LoadStreamSettings();
+    settings.audio_buffer_ms = 40;
+    Check(nxnow::SaveStreamSettings(settings) &&
+              nxnow::LoadStreamSettings().audio_buffer_ms == 40,
+          "audio buffer saved by this version is not migrated again");
+
     settings.interface_language = "ru";
     settings.controller_layout = "Switch";
     settings.audio_enabled = false;

@@ -2,7 +2,7 @@
 
 <img src="resources/icon/nxnow-logo-original.png" alt="NxNow logo" width="360" />
 
-# V0.1 NxNow
+# V0.2 NxNow
 
 ### Your PC games. Your Nintendo Switch. Anywhere.
 
