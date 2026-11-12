@@ -13,7 +13,7 @@ project(NxNow LANGUAGES C CXX)
 set(NXNOW_PATH_MAP_FROM "${CMAKE_SOURCE_DIR}")
 include("${CMAKE_SOURCE_DIR}/cmake/nxnow-path-map.cmake")
 
-set(NXNOW_VERSION "0.2.1" CACHE STRING "NxNow application version")
+set(NXNOW_VERSION "0.2.2" CACHE STRING "NxNow application version")
 if (NOT NXNOW_VERSION MATCHES "^[0-9]+\\.[0-9]+(\\.[0-9]+)?$")
     message(FATAL_ERROR "NXNOW_VERSION must use major.minor or major.minor.patch format")
 endif ()

@@ -267,12 +267,13 @@ void WebRtcSession::log_stream_summary(const char* reason) {
                     std::to_string(rtp_stats.nack_packets_requested) +
                     " rtpAu ok/drop=" + std::to_string(rtp_stats.access_units_completed) + "/" +
                     std::to_string(rtp_stats.access_units_dropped) +
-                    " frameQueue size/dropTiming/dropOverflow/hold/reuse=" +
+                    " frameQueue size/dropTiming/dropOverflow/hold/reuse/catchUp=" +
                     std::to_string(frame_holder.getFrameQueueSize()) + "/" +
                     std::to_string(frame_holder.getTimingDropStat()) + "/" +
                     std::to_string(frame_holder.getOverflowDropStat()) + "/" +
                     std::to_string(frame_holder.getTimingHoldStat()) + "/" +
-                    std::to_string(frame_holder.getFakeFrameStat()));
+                    std::to_string(frame_holder.getFakeFrameStat()) + "/" +
+                    std::to_string(frame_holder.getCatchUpDropStat()));
 }
 
 

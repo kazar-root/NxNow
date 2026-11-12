@@ -760,6 +760,16 @@ void rtp_decoder_poll(RtpDecoder* rtp_decoder) {
     rtp_decoder_expire_gap(rtp_decoder, ports_get_epoch_time());
 }
 
+uint32_t rtp_adaptive_reorder_hold_ms(uint32_t floor_ms, uint32_t rtt_ms) {
+  uint32_t hold_ms = floor_ms > 0 ? floor_ms : 8;
+  if (rtt_ms > 0) {
+    const uint32_t retransmit_ms = rtt_ms + rtt_ms / 2 + 6;
+    if (retransmit_ms > hold_ms)
+      hold_ms = retransmit_ms;
+  }
+  return hold_ms > RTP_REORDER_MAX_HOLD_MS ? RTP_REORDER_MAX_HOLD_MS : hold_ms;
+}
+
 void rtp_decoder_set_reorder_max_hold_ms(RtpDecoder* rtp_decoder, uint32_t hold_ms) {
   if (rtp_decoder)
     rtp_decoder->reorder_max_hold_ms =

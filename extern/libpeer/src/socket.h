@@ -13,6 +13,9 @@ typedef struct TcpSocket {
   Address bind_addr;
 } TcpSocket;
 
+// Receive buffer actually granted to the last opened UDP socket (bytes).
+extern int udp_socket_receive_buffer_bytes;
+
 int udp_socket_open(UdpSocket* udp_socket, int family, int port);
 
 int udp_socket_bind(UdpSocket* udp_socket, int port);

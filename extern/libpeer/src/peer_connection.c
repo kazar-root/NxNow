@@ -152,6 +152,22 @@ static uint32_t peer_connection_nack_packet_count(uint16_t bitmask) {
   return count;
 }
 
+// A missing packet is only waited for while a gap is open, so the hold costs
+// nothing when the stream is clean. Waiting less than a NACK round trip makes
+// every lost packet a dropped frame and a keyframe request (visible freeze);
+// follow the measured RTT instead, between the configured floor and the cap.
+static void peer_connection_update_reorder_hold(PeerConnection* pc) {
+  const uint32_t hold_ms = rtp_adaptive_reorder_hold_ms(
+      pc->config.video_reorder_max_hold_ms, pc->agent.smoothed_binding_rtt_ms);
+  if (hold_ms == pc->vrtp_decoder.reorder_max_hold_ms)
+    return;
+  const uint32_t previous_ms = pc->vrtp_decoder.reorder_max_hold_ms;
+  rtp_decoder_set_reorder_max_hold_ms(&pc->vrtp_decoder, hold_ms);
+  if (previous_ms > hold_ms + 4 || hold_ms > previous_ms + 4)
+    peer_connection_diag_log("reorder_hold ms=%" PRIu32 " previousMs=%" PRIu32 " rttMs=%" PRIu32,
+                             hold_ms, previous_ms, pc->agent.smoothed_binding_rtt_ms);
+}
+
 static void peer_connection_maybe_send_video_nacks(PeerConnection* pc,
                                                    uint16_t newest_sequence) {
   RtpDecoder* decoder = &pc->vrtp_decoder;
@@ -879,6 +895,7 @@ int peer_connection_loop(PeerConnection* pc) {
                                  pc->agent.binding_responses_received,
                                  pc->agent.smoothed_binding_rtt_ms);
       }
+      peer_connection_update_reorder_hold(pc);
       rtp_decoder_poll(&pc->vrtp_decoder);
       peer_connection_maybe_send_receiver_report(pc);
       peer_connection_maybe_send_transport_feedback(pc);

@@ -5,6 +5,8 @@
 #include "socket.h"
 #include "utils.h"
 
+int udp_socket_receive_buffer_bytes = 0;
+
 int udp_socket_add_multicast_group(UdpSocket* udp_socket, Address* mcast_addr) {
   int ret = 0;
   struct ip_mreq imreq = {0};
@@ -30,7 +32,12 @@ int udp_socket_add_multicast_group(UdpSocket* udp_socket, Address* mcast_addr) {
 int udp_socket_open(UdpSocket* udp_socket, int family, int port) {
   int ret;
   int reuse = 1;
-  int receive_buffer = 2 * 1024 * 1024;
+  // Ask for a large receive buffer; some stacks (Switch) refuse big values,
+  // so step down instead of keeping the tiny default.
+  static const int receive_buffer_sizes[] = {
+      2 * 1024 * 1024, 1024 * 1024, 512 * 1024, 256 * 1024, 128 * 1024};
+  int receive_buffer = 0;
+  size_t size_index;
   struct sockaddr* sa;
   socklen_t sock_len;
 
@@ -62,13 +69,21 @@ int udp_socket_open(UdpSocket* udp_socket, int family, int port) {
   }
 
   do {
-    if (setsockopt(udp_socket->fd, SOL_SOCKET, SO_RCVBUF,
-                   &receive_buffer, sizeof(receive_buffer)) < 0) {
-      LOGW("Failed to enlarge UDP receive buffer: %s", strerror(errno));
-    } else {
+    for (size_index = 0;
+         size_index < sizeof(receive_buffer_sizes) / sizeof(receive_buffer_sizes[0]);
+         size_index++) {
+      receive_buffer = receive_buffer_sizes[size_index];
+      if (setsockopt(udp_socket->fd, SOL_SOCKET, SO_RCVBUF,
+                     &receive_buffer, sizeof(receive_buffer)) == 0) {
+        break;
+      }
+      LOGW("UDP receive buffer of %d bytes refused: %s", receive_buffer, strerror(errno));
+    }
+    {
       socklen_t option_size = sizeof(receive_buffer);
       if (getsockopt(udp_socket->fd, SOL_SOCKET, SO_RCVBUF,
                      &receive_buffer, &option_size) == 0) {
+        udp_socket_receive_buffer_bytes = receive_buffer;
         LOGI("UDP receive buffer: %d bytes", receive_buffer);
       }
     }

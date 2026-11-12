@@ -2,7 +2,7 @@
 
 <img src="resources/icon/nxnow-logo-original.png" alt="NxNow logo" width="360" />
 
-# V0.2b NxNow
+# V0.2c NxNow
 
 ### Your PC games. Your Nintendo Switch. Anywhere.
 
@@ -17,6 +17,15 @@ Beautiful design · Multilingual experience · Controller-first navigation · Cl
 </div>
 
 ---
+
+## What's new in v0.2c
+
+- **Even more stable streaming, especially in demanding games such as Counter-Strike 2.** NxNow now absorbs the large bursts of data that heavy scenes send at once, instead of losing part of them over Wi-Fi.
+- **Much better 60 FPS.** Pictures are no longer skipped in pairs when they arrive slightly bunched up, which removes the judder and the apparent FPS drops at 60 FPS.
+- **Smarter recovery from lost packets.** When a packet goes missing, NxNow waits just long enough for GeForce NOW to resend it (based on your measured connection delay) instead of freezing the picture. There is no extra delay when nothing is lost.
+- **New *Diagnostics* option** in Settings › Controls & audio, to save a detailed stream log when reporting a problem.
+
+> **Recommended settings:** a maximum bitrate of **20 Mbps** gives the best balance of image quality and stability, at 30 or 60 FPS. On Wi-Fi, stay close to your router and prefer 5 GHz.
 
 ## What's new in v0.2b
 
