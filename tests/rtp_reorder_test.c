@@ -125,5 +125,12 @@ int main(void) {
   rtp_decoder_set_reorder_max_hold_ms(&decoder, UINT32_MAX);
   assert(decoder.reorder_max_hold_ms == RTP_REORDER_MAX_HOLD_MS);
   rtp_decoder_cleanup(&decoder);
+  // The gap hold follows the NACK round trip, within the floor and the cap.
+  assert(rtp_adaptive_reorder_hold_ms(8, 0) == 8);
+  assert(rtp_adaptive_reorder_hold_ms(8, 2) == 9);
+  assert(rtp_adaptive_reorder_hold_ms(8, 12) == 24);
+  assert(rtp_adaptive_reorder_hold_ms(30, 8) == 30);
+  assert(rtp_adaptive_reorder_hold_ms(8, 200) == RTP_REORDER_MAX_HOLD_MS);
+  assert(rtp_adaptive_reorder_hold_ms(0, 0) == 8);
   return 0;
 }

@@ -479,6 +479,14 @@ bool SettingsTab::ToggleStatsOverlay(brls::View* view)
     return true;
 }
 
+bool SettingsTab::ToggleDiagnostics(brls::View* view)
+{
+    (void)view;
+    draft_settings_.debug_diagnostics = !draft_settings_.debug_diagnostics;
+    MarkDirty();
+    return true;
+}
+
 bool SettingsTab::ChooseGameLanguage(brls::View* view)
 {
     (void)view;

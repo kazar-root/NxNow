@@ -89,7 +89,7 @@ private:
     size_t maximumConsecutiveReuse = 0;
     size_t sourceClockPresentStat = 0;
     size_t clockBypassPresentStat = 0;
-    static constexpr size_t kBacklogTicksBeforeCatchUp = 3;
+    static constexpr size_t kBacklogTicksBeforeCatchUp = 6;
     size_t backlogTicks = 0;
     size_t catchUpDroppedStat = 0;
 };

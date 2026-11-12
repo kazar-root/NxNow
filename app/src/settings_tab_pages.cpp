@@ -69,6 +69,10 @@ void SettingsTab::BuildPreferencesPage()
         "Show FPS, bitrate, latency and battery level. Press Plus + Minus during play to toggle these stats.",
         [this] { return draft_settings_.stats_overlay_enabled ? "Enabled" : "Disabled"; },
         [this](brls::View* view) { return ToggleStatsOverlay(view); }));
+    controls->addView(MakeOptionRow("Diagnostics",
+        "Writes detailed stream logs to sdmc:/switch/NXNow/stream_trace.log to investigate lag, freezes or packet loss. Leave disabled for normal play.",
+        [this] { return draft_settings_.debug_diagnostics ? "Enabled" : "Disabled"; },
+        [this](brls::View* view) { return ToggleDiagnostics(view); }));
     content_container_->addView(controls);
 }
 

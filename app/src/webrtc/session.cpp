@@ -17,6 +17,8 @@
 
 #ifdef __SWITCH__
 #include <sys/stat.h>
+
+extern "C" int udp_socket_receive_buffer_bytes;
 #endif
 
 using namespace nxnow::webrtc::internal;
@@ -236,7 +238,8 @@ void WebRtcSession::start_network_worker() {
         return;
 
     network_thread_ = std::thread(&WebRtcSession::network_loop, this);
-    AppendStreamLog("TRANSPORT worker_started");
+    AppendStreamLog("TRANSPORT worker_started udpReceiveBuffer=" +
+                    std::to_string(udp_socket_receive_buffer_bytes));
 }
 
 void WebRtcSession::network_loop() {

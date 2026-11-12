@@ -83,9 +83,12 @@ typedef void (*RtpOnVideoPacket)(const PeerVideoPacket* packet, void* user_data)
 
 // Dynamic 720p frames regularly span more than eight RTP packets. A tiny
 // window turns normal UDP burst reordering into artificial packet loss.
-#define RTP_REORDER_WINDOW 128
-#define RTP_REORDER_MAX_HOLD_PACKETS 64
-#define RTP_REORDER_MAX_HOLD_MS 30
+// A heavy 720p frame at 15-20 Mbps is ~60-80 packets that Wi-Fi delivers in
+// one burst, so the packet bound must cover a frame plus a NACK round trip.
+// The time bound caps the wait for a retransmission (adaptive, RTT-based).
+#define RTP_REORDER_WINDOW 256
+#define RTP_REORDER_MAX_HOLD_PACKETS 192
+#define RTP_REORDER_MAX_HOLD_MS 45
 #define RTP_REORDER_PACKET_CAPACITY (CONFIG_MTU + 256)
 
 struct RtpDecoder {
@@ -169,6 +172,10 @@ int rtp_decoder_decode(RtpDecoder* rtp_decoder, const uint8_t* data, size_t size
 void rtp_decoder_poll(RtpDecoder* rtp_decoder);
 
 void rtp_decoder_set_reorder_max_hold_ms(RtpDecoder* rtp_decoder, uint32_t hold_ms);
+
+// How long a sequence gap may wait for its NACK retransmission: about 1.5x the
+// measured RTT plus a few ms, never below floor_ms nor above the hard cap.
+uint32_t rtp_adaptive_reorder_hold_ms(uint32_t floor_ms, uint32_t rtt_ms);
 
 uint32_t rtp_get_ssrc(uint8_t* packet);
 

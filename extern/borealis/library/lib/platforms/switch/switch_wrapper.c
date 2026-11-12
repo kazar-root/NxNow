@@ -34,7 +34,17 @@ void userAppInit()
     {
         cfg.num_bsd_sessions = 12; // default is 3
         cfg.sb_efficiency    = 8; // default is 4
-        socketInitialize(&cfg);
+        // Cloud-gaming video arrives in bursts: one heavy frame can be a few
+        // hundred UDP packets delivered at once, especially over Wi-Fi. The
+        // default 42 KB UDP receive buffer overflows and drops them, which
+        // freezes the picture until a new keyframe. Fall back if refused.
+        const u32 default_udp_rx = cfg.udp_rx_buf_size;
+        cfg.udp_rx_buf_size = 0x80000; // 512 KB, default is 0xA500
+        if (R_FAILED(socketInitialize(&cfg)))
+        {
+            cfg.udp_rx_buf_size = default_udp_rx;
+            socketInitialize(&cfg);
+        }
     }
     else
     {

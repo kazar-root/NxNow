@@ -217,20 +217,21 @@ AVFrame* AVFrameQueue::pop(bool& reused, uint64_t& generation, int64_t target_pt
 
         // Pure FIFO presentation never drains a backlog: once a decode burst
         // (or the two-picture startup reserve) leaves extra pictures queued,
-        // every later picture is shown that many display ticks late. Fast
-        // games feel this as input lag. Absorb a one-tick burst, but jump to
-        // the newest picture when the backlog persists or exceeds one frame.
+        // every later picture is shown that many display ticks late. At 60
+        // FPS the source matches the display rate, so a backlog never drains
+        // on its own. Trim it gently: drop ONE oldest picture after a backlog
+        // has lasted ~100 ms. Jumping straight to the newest picture dropped
+        // several frames at once and then repeated one, which looked like FPS
+        // drops at 60 FPS; the queue capacity still bounds the worst case.
         if (presentationStarted && queue.size() > 1) {
             backlogTicks++;
-            if (queue.size() > 2 || backlogTicks >= kBacklogTicksBeforeCatchUp) {
-                while (queue.size() > 1) {
-                    AVFrame* dropped = queue.front();
-                    queue.pop_front();
-                    generations.pop_front();
-                    av_frame_free(&dropped);
-                    framesDroppedStat++;
-                    catchUpDroppedStat++;
-                }
+            if (backlogTicks >= kBacklogTicksBeforeCatchUp) {
+                AVFrame* dropped = queue.front();
+                queue.pop_front();
+                generations.pop_front();
+                av_frame_free(&dropped);
+                framesDroppedStat++;
+                catchUpDroppedStat++;
                 backlogTicks = 0;
             }
         } else {

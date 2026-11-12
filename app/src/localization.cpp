@@ -702,6 +702,8 @@ const Dictionary& DictionaryFor(const std::string& code)
             {"Controller shortcuts and automatic USB keyboard/mouse support for Battle.net.", "Raccourcis manette et clavier/souris USB automatiques sur Battle.net."},
             {"Created by", "Créé par"},
             {"Stream stats overlay", "Statistiques du flux"},
+            {"Writes detailed stream logs to sdmc:/switch/NXNow/stream_trace.log to investigate lag, freezes or packet loss. Leave disabled for normal play.",
+             "Enregistre un journal détaillé du flux dans sdmc:/switch/NXNow/stream_trace.log pour analyser les saccades, blocages ou pertes de paquets. Laissez désactivé pour jouer normalement."},
             {"Show FPS, bitrate and ping. Press Plus + Minus together during play to hide or restore these stats.", "Affiche les FPS, le débit et le ping. En jeu, appuyez sur + et - ensemble pour masquer ou réafficher ces informations."},
             {"Applies to the next streaming session after saving.", "S'applique à la prochaine session après enregistrement."},
             {"Shoulders / triggers", "Épaules / gâchettes"},
