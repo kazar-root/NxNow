@@ -101,6 +101,10 @@ static void check_partial_output(std::deque<int> sends, std::deque<int> receives
     assert(session.decoder_->setup(VIDEO_FORMAT_H264, 16, 16, 60, nullptr,
                                     VIDEO_DECODER_FORCE_SOFTWARE) == 0);
     run_worker(session, std::move(sends), std::move(receives), true);
+    // Only one picture survives the partial-output path. The presenter normally
+    // waits for two ready pictures before its first present (covered by
+    // av_frame_queue_test); here we only check that the decoder published it.
+    AVFrameHolder::instance().prepare(3, 1);
     bool published = false;
     AVFrameHolder::instance().get([&](AVFrame* frame, uint64_t generation, bool reused) {
         assert(frame->buf[0] && generation == 1 && !reused);
