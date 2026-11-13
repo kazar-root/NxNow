@@ -14,8 +14,8 @@
 
 #define private public
 #include "webrtc_session.hpp"
-#undef private
 #include "stream/ffmpeg/AVFrameHolder.hpp"
+#undef private
 
 #define main existing_audio_pipeline_test_main
 #include "audio_pipeline_test.cpp"
@@ -147,6 +147,9 @@ int main()
     wait_until([&] { return session.video_target_rtp_timestamp() != AV_NOPTS_VALUE; });
 
     AVFrameQueue frames;
+    // This test drives the audio clock with one picture at a time; the
+    // two-picture startup buffer is covered by av_frame_queue_test.
+    frames.startupDepth = 1;
     int64_t pts = 92700;
     push_video(frames, pts);
     bool reused = false;
