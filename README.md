@@ -100,6 +100,8 @@ By default, NxNow follows your console language for its interface and requests t
 | **D-pad** (mouse mode) | Keyboard arrow keys |
 | **−** (mouse mode) | Escape |
 
+ℹ️ Questions about sign-in, keyboards, 60 FPS or connection tips? See the **[FAQ & Tips](FAQ.md)**.
+
 ## A project made with passion
 
 NxNow is an independent community project, created by **[KazaR-RooT](https://github.com/kazar-root)**. This is an early release, and your feedback can help make it even better. If you enjoy the app, consider leaving a ⭐ on GitHub or sharing your experience!
