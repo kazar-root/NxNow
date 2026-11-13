@@ -75,6 +75,14 @@ int rtp_packet_validate(uint8_t* data, size_t length) {
 }
 uint32_t rtp_get_ssrc(uint8_t* packet) { (void)packet; return 42; }
 void rtp_decoder_poll(RtpDecoder* decoder) { (void)decoder; }
+void rtp_decoder_set_reorder_max_hold_ms(RtpDecoder* decoder, uint32_t hold_ms) {
+  (void)decoder;
+  (void)hold_ms;
+}
+uint32_t rtp_adaptive_reorder_hold_ms(uint32_t floor_ms, uint32_t rtt_ms) {
+  (void)rtt_ms;
+  return floor_ms;
+}
 int dtls_srtp_probe(uint8_t* data) { return data[0] >= 0x14 && data[0] <= 0x17; }
 void sctp_tick(Sctp* sctp) {
   if (close_during_tick) {
