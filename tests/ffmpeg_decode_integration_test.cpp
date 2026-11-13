@@ -69,6 +69,9 @@ int main(int argc, char** argv)
     assert(decoder.setup(VIDEO_FORMAT_H264, 64, 32, 60, nullptr,
                          VIDEO_DECODER_FORCE_SOFTWARE) == 0);
     assert(!decoder.uses_hardware_frames());
+    // Each picture is checked as soon as it is decoded; the two-picture
+    // startup buffer is covered by av_frame_queue_test.
+    AVFrameHolder::instance().prepare(3, 1);
     decode_stream(decoder, argv[1], 64, 32);
     decoder.reset_stream();
     decode_stream(decoder, argv[2], 32, 64);
