@@ -40,6 +40,11 @@ const std::string& AppHomePath()
     return path;
 }
 
+namespace ui
+{
+void WaitForImageGpu() {}
+}
+
 HttpResponse HttpClient::Get(
     const std::string& url, const std::string&, const std::vector<std::string>&,
     const std::string&, HttpTransferControl control) const
@@ -196,9 +201,12 @@ int main()
         assert(thumbnail.IsReady() && thumbnail.HasFinished());
         assert(last_thumbnail_url == "https://img.nvidiagrid.net/thumbnail-valid.jpg;w=208;q=65");
         assert(thumbnail_requests == 1);
+        const auto uploads_before_reuse = brls::image_uploads;
         thumbnail.SetThumbnail("https://img.nvidiagrid.net/thumbnail-valid.jpg;w=4096;h=2160");
-        brls::WaitForSync(); brls::DrainSync();
-        assert(thumbnail.IsReady() && thumbnail_requests == 1); // Reuse the small variant's cache.
+        // The decoded thumbnail is still in memory: it is reused at once,
+        // without a new download or texture upload.
+        assert(thumbnail.IsReady() && thumbnail_requests == 1);
+        assert(brls::image_uploads == uploads_before_reuse);
         const auto uploads = brls::image_uploads;
         thumbnail.SetThumbnail("https://img.nvidiagrid.net/thumbnail-huge.jpg");
         brls::WaitForSync(); brls::DrainSync();

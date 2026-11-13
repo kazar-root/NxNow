@@ -30,6 +30,11 @@ const std::string& AppHomePath()
     return path;
 }
 
+namespace ui
+{
+void WaitForImageGpu() {}
+}
+
 HttpResponse HttpClient::Get(
     const std::string& url, const std::string&, const std::vector<std::string>&,
     const std::string&, HttpTransferControl control) const

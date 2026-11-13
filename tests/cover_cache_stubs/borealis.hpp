@@ -19,6 +19,17 @@ inline NVGpaint nvgImagePattern(NVGcontext*, float x, float y, float w, float h,
 inline void nvgFillPaint(NVGcontext*, NVGpaint paint) { last_image_paint = paint; }
 inline void nvgFill(NVGcontext*) {}
 
+// Shared thumbnail textures are created and freed straight through NanoVG.
+inline int next_nvg_image = 100;
+inline int nvg_images_deleted = 0;
+inline int nvgCreateImageMem(NVGcontext*, int, unsigned char*, int);
+inline void nvgImageSize(NVGcontext*, int, int* width, int* height)
+{
+    *width = 320;
+    *height = 180;
+}
+inline void nvgDeleteImage(NVGcontext*, int) { ++nvg_images_deleted; }
+
 namespace brls
 {
 enum class ImageScalingType { FIT, FILL };
@@ -29,6 +40,16 @@ inline std::mutex sync_mutex;
 inline std::condition_variable sync_ready;
 inline std::vector<std::function<void()>> sync_tasks;
 inline int image_uploads = 0;
+
+class Application
+{
+  public:
+    static NVGcontext* getNVGContext()
+    {
+        static NVGcontext context;
+        return &context;
+    }
+};
 
 inline void sync(const std::function<void()>& task)
 {
@@ -79,6 +100,7 @@ class Image
     void setClipsToBounds(bool value) { clips = value; }
     NVGpaint a(NVGpaint paint) { return paint; }
     void clear() { texture_ = 0; }
+    void innerSetImage(int texture) { texture_ = texture; }
     virtual void draw(NVGcontext*, float, float, float, float, Style, FrameContext*) {}
     std::string resource_path;
     float original_width = 320;
@@ -90,4 +112,10 @@ class Image
     bool free_texture_ = true;
     int texture_ = 0;
 };
+}
+
+inline int nvgCreateImageMem(NVGcontext*, int, unsigned char*, int)
+{
+    ++brls::image_uploads;
+    return next_nvg_image++;
 }
