@@ -106,6 +106,8 @@ struct PublicGame
     std::string membership_tier_label;
     bool is_in_library = false;
     bool is_free_to_play = false;
+    // Vertical box art for library cards; image_url is the wide catalog picture.
+    std::string portrait_url;
     std::vector<GameVariant> variants;
     std::string description;
     std::string description_language;

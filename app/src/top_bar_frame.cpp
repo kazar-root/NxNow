@@ -164,7 +164,10 @@ void TopBarFrame::addTab(const std::string& label, TabViewCreator creator)
             UpdateStatusBar(true);
         });
     button->setId(label == "Settings" ? "shell-settings" : label == "Catalog" ? "shell-catalog" : "shell-library");
-    (label == "Settings" ? right_container_ : tabs_container_)->addView(button);
+    auto* container = label == "Settings" ? right_container_ : tabs_container_;
+    // Same 10 px gap as the other header buttons so Catalog and Library do not touch.
+    if (!container->getChildren().empty()) button->setMarginLeft(10);
+    container->addView(button);
     tabs_.push_back({label, std::move(creator), button, nullptr});
     WireHeaderNavigation();
     if (tabs_.size() == 1) SelectTab(0);

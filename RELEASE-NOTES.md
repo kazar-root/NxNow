@@ -1,20 +1,28 @@
-# NxNow v0.2c
+# NxNow v0.2d
 
-**More stability for the whole streaming system, especially in heavy games such as Counter-Strike 2, and a much better 60 FPS mode.**
+**Fixes for the problems reported by players after v0.2c.**
 
-## What's new
+Thank you all for your valuable feedback and your precious help. Every report made this version better!
 
-- **Even more stable streaming, especially in demanding games such as Counter-Strike 2.** NxNow now absorbs the large bursts of data that heavy scenes send at once, instead of losing part of them over Wi-Fi.
-- **Much better 60 FPS.** Pictures are no longer skipped in pairs when they arrive slightly bunched up, which removes the judder and the apparent FPS drops at 60 FPS.
-- **Smarter recovery from lost packets.** When a packet goes missing, NxNow waits just long enough for GeForce NOW to resend it (based on your measured connection delay) instead of freezing the picture. There is no extra delay when nothing is lost.
-- **New *Diagnostics* option** in Settings › Controls & audio, to save a detailed stream log when reporting a problem.
+## What's fixed
 
-## Recommended settings
+- **Battle.net sign-in works with the on-screen keyboard.** In Mouse & Keyboard Mode, **ZR + R3** now opens a plain keyboard. It no longer submits the empty email or password form on its own.
+- **No more "controller disconnected" messages when typing.** Opening or closing the keyboard no longer makes games think the controller was unplugged. This removes Diablo IV's *"Please reconnect your controller"* and World of Warcraft's *Xbox 360 Controller / Input controller #1 connected/disconnected* chat messages.
+- **ZR + R3 also closes the keyboard.** Press the same shortcut again to close it. What you have already typed stays in the text field.
+- **Sharp pictures for games added from the catalog.** Their library background is now loaded in high definition, and their vertical cover fills the whole card in the library. For a game you added before this update, remove it and add it again from the catalog to get its vertical cover.
+- **Catalog and Library buttons** at the top of the screen no longer touch each other.
 
-- **Maximum bitrate: 20 Mbps** — the best balance of image quality and stability, at 30 or 60 FPS.
-- On Wi-Fi, stay close to your router and prefer 5 GHz.
+## Signing in to Battle.net
 
-Everything from v0.2b (most popular games, library management, fully working on-screen keyboard, faster catalog) is included.
+1. Press **L3 + R3** to switch to **Mouse & Keyboard Mode**.
+2. Click in the field with the **left stick** and **ZR**, then press **ZR + R3** to open the keyboard and type.
+3. Once signed in, press **L3 + R3** again to go back to **Controller Mode**. The keyboard is still opened with **ZR + R3**.
+
+The full guide is in the [FAQ](https://github.com/kazar-root/NxNow/blob/main/FAQ.md).
+
+Everything from v0.2c (more stable streaming in heavy games, much better 60 FPS) and v0.2b is included. A maximum bitrate of **20 Mbps** is still recommended.
+
+**Have fun, everyone!**
 
 ## A problem?
 
@@ -32,12 +40,12 @@ Everything from v0.2b (most popular games, library management, fully working on-
 3. Launch the Homebrew Menu **in application mode** (hold **R** while launching an installed
    game), then open NxNow.
 
-The app and the Homebrew Menu show this version as **0.2.2**.
+The app and the Homebrew Menu show this version as **0.2.3**.
 
 ## Integrity
 
 SHA-256 (`NxNow.nro`):
 
 ```
-1819abb34593cd5dbede31e753beda0b235e08011b84b364474223b70ddddb8c
+16fc6f47cadc02e3dd1ba86fa06097ddf1190d9d74be6f3e3add5f280327bf49
 ```

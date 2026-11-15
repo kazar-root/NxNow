@@ -5,7 +5,7 @@ int main()
 {
     GamepadPresence presence; std::array<bool, kRemoteControllerCount> connected {};
     connected[0] = true; int calls = 0; bool accept = false;
-    auto send = [&](uint8_t id, uint16_t bitmap) { ++calls; assert(id == 0 && bitmap == 1); return accept; };
+    auto send = [&](uint8_t id, uint16_t bitmap) { ++calls; assert(id == 0 && bitmap == 0x0101); return accept; };
     presence.Update(false, connected, send); assert(calls == 0);
     presence.Update(true, connected, send); assert(calls == 1);
     accept = true; presence.Update(true, connected, send); assert(calls == 2);

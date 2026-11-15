@@ -163,7 +163,8 @@ void GameCarouselView::draw(NVGcontext* vg, float x, float y, float width, float
             nvgText(vg, cx, top + h * .80f, Tr("More games").c_str(), nullptr);
         }
         else if (found != slots_.end())
-            ui::DrawArtwork(vg, *found->image, left, top, w, h, false, 1, 14);
+            // Fill the card: wide catalog pictures are cropped instead of letterboxed.
+            ui::DrawArtwork(vg, *found->image, left, top, w, h, true, 1, 14);
         if (!page_card && (found == slots_.end() || !found->image->IsReady()))
         {
             ui::DrawIcon(vg, ui::ConsoleIcon::Library, left + w / 2 - 18, top + h / 2 - 18, 36, ui::Muted());

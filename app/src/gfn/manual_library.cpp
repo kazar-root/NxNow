@@ -83,6 +83,7 @@ std::vector<PublicGame> GfnClient::LoadManualLibraryGames(const AuthSession& ses
         game.title = String(entry, "title"); game.launch_app_id = String(entry, "launch_app_id");
         game.store = String(entry, "store"); game.publisher = String(entry, "publisher");
         game.image_url = String(entry, "image_url"); game.description = String(entry, "description");
+        game.portrait_url = String(entry, "portrait_url");
         game.description_language = String(entry, "description_language");
         game.is_free_to_play = json_is_true(json_object_get(entry, "free_to_play"));
         game.is_in_library = true;
@@ -133,6 +134,7 @@ bool GfnClient::AddManualLibraryGame(const AuthSession& session, const PublicGam
     Set(entry.get(), "title", game.title); Set(entry.get(), "launch_app_id", game.launch_app_id);
     Set(entry.get(), "store", game.store); Set(entry.get(), "publisher", game.publisher);
     Set(entry.get(), "image_url", game.image_url); Set(entry.get(), "description", game.description);
+    Set(entry.get(), "portrait_url", game.portrait_url);
     Set(entry.get(), "description_language", game.description_language);
     json_object_set_new(entry.get(), "free_to_play", json_boolean(game.is_free_to_play));
     auto* variants = json_array();

@@ -2,7 +2,7 @@
 
 <img src="resources/icon/nxnow-logo-original.png" alt="NxNow logo" width="360" />
 
-# V0.2c NxNow
+# V0.2d NxNow
 
 ### Your PC games. Your Nintendo Switch. Anywhere.
 
@@ -17,6 +17,18 @@ Beautiful design · Multilingual experience · Controller-first navigation · Cl
 </div>
 
 ---
+
+## What's new in v0.2d
+
+This update fixes the problems reported by players after v0.2c. **Thank you all for your valuable feedback and your precious help!**
+
+- **Battle.net sign-in works with the on-screen keyboard.** In Mouse & Keyboard Mode, **ZR + R3** now opens a plain keyboard. It no longer submits the empty email or password form on its own. See the [FAQ](FAQ.md) for the step-by-step sign-in guide.
+- **No more "controller disconnected" messages when typing.** Opening or closing the keyboard no longer makes games think the controller was unplugged. This removes Diablo IV's *"Please reconnect your controller"* and World of Warcraft's *Xbox 360 Controller / Input controller #1 connected/disconnected* chat messages.
+- **ZR + R3 also closes the keyboard.** Press the same shortcut again to close it. What you have already typed stays in the text field.
+- **Sharp pictures for games added from the catalog.** Their library background is now loaded in high definition, and their vertical cover fills the whole card in the library.
+- **Catalog and Library buttons** at the top of the screen no longer touch each other.
+
+> **Have fun, everyone!**
 
 ## What's new in v0.2c
 

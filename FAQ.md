@@ -23,7 +23,25 @@ NxNow provides two convenient ways to do this:
 
 Once you're logged in, simply press **L3 + R3** again to return to Controller Mode.
 
-## 2. Can I use the keyboard to chat while gaming?
+**Battle.net players:** use Option 2 (Mouse & Keyboard Mode) to sign in. See question 2 below for the step-by-step guide.
+
+## 2. How do I sign in to Battle.net (World of Warcraft, Diablo IV)?
+
+The first time you launch a Battle.net game, Battle.net asks for your email, password and sometimes a security code. Use **Mouse & Keyboard Mode** to fill in these fields:
+
+1. Press **L3 + R3** to switch to **Mouse & Keyboard Mode** (see the shortcuts table in the README).
+2. Move the cursor with the **left stick** and press **ZR** to click in the email field.
+3. Press **ZR + R3** to open the virtual keyboard, type your email, then confirm with the keyboard's **Enter** button.
+4. Do the same for your password and, if asked, your security code.
+5. Once you are signed in, press **L3 + R3** again to go back to **Controller Mode**.
+
+In Controller Mode, the keyboard is still opened with **ZR + R3**. In World of Warcraft, it then opens the in-game chat directly. Press **ZR + R3** again to close the keyboard.
+
+> Why Mouse & Keyboard Mode? In World of Warcraft's Controller Mode, the keyboard first presses *Enter* to open the chat. On the Battle.net sign-in page, that *Enter* would submit the empty form.
+
+**Have fun, everyone!**
+
+## 3. Can I use the keyboard to chat while gaming?
 
 Absolutely!
 
@@ -31,7 +49,9 @@ While playing, you can open the Nintendo Switch virtual keyboard at any time by 
 
 This allows you to communicate with your teammates, participate in in-game chats, and type messages without leaving your gaming session.
 
-## 3. Does NxNow support physical keyboards and mice?
+Press **ZR + R3** again to close the keyboard. What you have already typed stays in the text field.
+
+## 4. Does NxNow support physical keyboards and mice?
 
 Yes! NxNow supports USB keyboards and mice connected directly to your Nintendo Switch.
 
@@ -44,7 +64,7 @@ Connected keyboards and mice are recognized automatically, allowing you to enjoy
 
 This is particularly useful for games such as World of Warcraft and Counter-Strike.
 
-## 4. What should I do if my streaming connection is unstable?
+## 5. What should I do if my streaming connection is unstable?
 
 If your internet connection is slow, unreliable, or inconsistent, you can adjust your streaming settings at any time.
 
@@ -57,7 +77,7 @@ Reducing the frame rate and bitrate lowers bandwidth requirements and can help p
 
 You can increase the streaming quality again whenever your connection allows it. On a good connection, **20 Mbps** is the recommended maximum bitrate.
 
-## 5. Does NxNow support 60 FPS in World of Warcraft and Counter-Strike?
+## 6. Does NxNow support 60 FPS in World of Warcraft and Counter-Strike?
 
 Yes!
 
@@ -70,7 +90,7 @@ This provides a much smoother and more responsive gaming experience compared to 
 
 Actual performance depends on your network connection, streaming settings, and server performance.
 
-## 6. Why is the Steam Big Picture intro video stuttering?
+## 7. Why is the Steam Big Picture intro video stuttering?
 
 You might notice that the Steam Big Picture startup animation occasionally appears choppy or stutters when launching a Steam game.
 
@@ -82,13 +102,13 @@ Once the introduction finishes and your game starts, streaming should return to 
 
 There is no need to restart NxNow just because the introduction appears choppy.
 
-## 7. Does NxNow support audio and microphone streaming?
+## 8. Does NxNow support audio and microphone streaming?
 
 **Game audio: yes.** NxNow streams your game's sound to the Nintendo Switch, with dedicated handling to keep playback smooth alongside the video and controls.
 
 **Microphone: not yet.** Voice chat through the Switch microphone is not supported at the moment. It is on the roadmap for a future update.
 
-## 8. Can I switch between Controller Mode and Mouse & Keyboard Mode while playing?
+## 9. Can I switch between Controller Mode and Mouse & Keyboard Mode while playing?
 
 Yes!
 

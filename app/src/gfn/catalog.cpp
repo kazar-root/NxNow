@@ -299,6 +299,7 @@ PublicGame ToPublicGame(const GameInfo& source)
     game.title                 = source.title;
     game.publisher             = source.publisher;
     game.image_url             = source.image_url;
+    game.portrait_url          = source.portrait_url;
     game.membership_tier_label = source.membership_tier_label;
     game.is_in_library         = source.is_in_library;
     game.variants              = source.variants;

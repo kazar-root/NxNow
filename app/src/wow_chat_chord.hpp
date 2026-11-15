@@ -9,6 +9,46 @@ struct WowChatDecision
     bool tap_r3 = false;
 };
 
+// The WoW chat keyboard presses Enter to open the chat box. That would submit
+// the Battle.net sign-in form, which is filled in mouse mode, so mouse mode
+// gets the plain keyboard and gamepad mode keeps the in-game chat keyboard.
+inline bool UseWowChatKeyboard(bool wow_session, bool mouse_mode)
+{
+    return wow_session && !mouse_mode;
+}
+
+// While the keyboard is open, the same R3 + ZR chord closes it once both
+// buttons are released. Buttons still held when it opened are ignored.
+class KeyboardCloseChord
+{
+  public:
+    bool Update(bool r3, bool zr, bool keyboard_visible)
+    {
+        if (!keyboard_visible)
+        {
+            armed_ = false;
+            blocked_ = r3 || zr;
+            return false;
+        }
+        if (blocked_)
+        {
+            if (!r3 && !zr) blocked_ = false;
+            return false;
+        }
+        if (r3 && zr) armed_ = true;
+        if (armed_ && !r3 && !zr)
+        {
+            armed_ = false;
+            return true;
+        }
+        return false;
+    }
+
+  private:
+    bool armed_ = false;
+    bool blocked_ = false;
+};
+
 // Capture R3 until release. Either order of ZR + R3 opens the keyboard
 // once both buttons are released. ZR alone stays immediate for gameplay.
 class WowChatChord

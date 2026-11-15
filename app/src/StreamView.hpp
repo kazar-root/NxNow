@@ -233,6 +233,7 @@ private:
     int touch_pointer_stream_width_ = 0;
     int touch_pointer_stream_height_ = 0;
     nxnow::input::KeyboardOpenChord keyboard_open_chord_;
+    nxnow::input::KeyboardCloseChord keyboard_close_chord_;
     nxnow::input::WowChatChord wow_chat_chord_;
     bool keyboard_chat_mode_ = false;
     bool keyboard_ui_blocked_ = false;

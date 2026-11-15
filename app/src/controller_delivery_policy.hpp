@@ -146,8 +146,10 @@ class GamepadPresence
     void Update(bool ready, const std::array<bool, kRemoteControllerCount>& connected, Send send)
     {
         if (!ready) { announced_.fill(false); return; }
-        uint16_t bitmap = 0;
-        for (size_t i = 0; i < connected.size(); ++i) if (connected[i]) bitmap |= uint16_t{1} << i;
+        // Same encoding as every other report. A bitmap without the high byte
+        // makes the cloud PC swap the pad between "Xbox 360 Controller" and
+        // "Input controller #1", which games report as a disconnection.
+        const uint16_t bitmap = ControllerBitmap(connected);
         for (size_t i = 0; i < connected.size(); ++i)
         {
             if (!connected[i]) announced_[i] = false;

@@ -330,6 +330,9 @@ void StreamView::draw(NVGcontext* vg, float x, float y, float width, float heigh
             stream_overlay_b_was_down_ = false;
         }
 
+        if (keyboard_close_chord_.Update(state.buttons[brls::BUTTON_RSB], state.buttons[brls::BUTTON_RT],
+                keyboard_visible_))
+            HideInlineKeyboard(false);
         const bool can_open_keyboard = input_focused_ && !native_keyboard_owns_input && !keyboard_visible_ &&
             !stream_overlay_visible_ && !nte_owned_input && !keyboard_release_guard_ &&
             stream_end_reason_ == nxnow::StreamEndReason::None;
@@ -353,8 +356,10 @@ void StreamView::draw(NVGcontext* vg, float x, float y, float width, float heigh
             keyboard_owned_input = keyboard_owned_input || keyboard_visible_;
         }
         if (chat_open.open) {
-            if (is_wow_session_) OpenWowChatKeyboard(state);
-            else OpenInlineKeyboard(state);
+            if (nxnow::input::UseWowChatKeyboard(is_wow_session_, launcher_mouse_.mouse_mode()))
+                OpenWowChatKeyboard(state);
+            else
+                OpenInlineKeyboard(state);
             keyboard_owned_input = keyboard_owned_input || keyboard_visible_;
         }
         // Navigation/confirm/cancel belong exclusively to the native applet.

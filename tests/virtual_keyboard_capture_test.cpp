@@ -28,7 +28,7 @@ int main()
     std::vector<KeyboardEvent> delivered;
     text.Drain(neutral.Complete(connected), [&](auto event) { delivered.push_back(event); return true; });
     assert(delivered.empty());
-    neutral.Update(true, connected, [&](auto id, auto mask) { ++attempts; assert(id == 0 && mask == 1); return true; });
+    neutral.Update(true, connected, [&](auto id, auto mask) { ++attempts; assert(id == 0 && mask == 0x0101); return true; });
     assert(neutral.Complete(connected));
     for (int frame = 0; frame < 300; ++frame)
     {

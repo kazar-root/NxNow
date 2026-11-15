@@ -1,5 +1,6 @@
 #pragma once
 #include "models.hpp"
+#include "catalog_image_policy.hpp"
 #include <algorithm>
 
 namespace nxnow::library
@@ -10,6 +11,10 @@ inline GameInfo ManualGameInfo(const PublicGame& item)
     game.id = item.id; game.uuid = item.uuid; game.title = item.title;
     game.launch_app_id = item.launch_app_id.empty() ? item.id : item.launch_app_id;
     game.publisher = item.publisher; game.image_url = item.image_url;
+    // Catalog entries only keep a small card picture. Ask NVIDIA's CDN for the
+    // same backdrop size as account games so the library background stays sharp.
+    game.background_url = catalog::ImageUrl(item.image_url, catalog::kBackdropWidth);
+    game.portrait_url = item.portrait_url;
     game.description = item.description; game.description_language = item.description_language;
     game.is_in_library = true; game.variants = item.variants;
     if (game.variants.empty())

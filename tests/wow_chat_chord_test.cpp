@@ -5,6 +5,25 @@
 int main()
 {
     using namespace nxnow::input;
+    assert(UseWowChatKeyboard(true, false));   // in-game chat in gamepad mode
+    assert(!UseWowChatKeyboard(true, true));   // sign-in fields in mouse mode
+    assert(!UseWowChatKeyboard(false, false)); // other games: plain keyboard
+    assert(!UseWowChatKeyboard(false, true));
+
+    {
+        KeyboardCloseChord close;
+        assert(!close.Update(true, true, false));   // chord that opens the keyboard
+        assert(!close.Update(true, true, true));    // still held as it appears
+        assert(!close.Update(false, false, true));
+        assert(!close.Update(true, false, true));   // R3 alone does not close
+        assert(!close.Update(false, false, true));
+        assert(!close.Update(true, true, true));
+        assert(!close.Update(false, true, true));   // wait for both releases
+        assert(close.Update(false, false, true));   // closes
+        assert(!close.Update(false, false, true));
+        assert(!close.Update(true, true, true));
+        assert(!close.Update(false, false, false)); // closed some other way
+    }
     for (bool same_frame : {false, true})
     {
         for (bool release_r3_first : {false, true})

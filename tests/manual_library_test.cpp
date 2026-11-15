@@ -23,18 +23,26 @@ int main()
     game.launch_app_id = "12345"; game.title = "Jeu possédé"; game.store = "STEAM";
     game.description = "Description française"; game.description_language = "fr";
     game.variants = {{"12345", "STEAM", "NOT_OWNED", "", "AVAILABLE", false}};
+    game.portrait_url = "https://img.nvidiagrid.net/apps/1/GAME_BOX_ART.jpg;w=224";
     assert(client.AddManualLibraryGame(first, game));
     assert(client.AddManualLibraryGame(first, game));
     const auto loaded = client.LoadManualLibraryGames(first);
     assert(loaded.size() == 1 && loaded[0].title == game.title);
     assert(loaded[0].description_language == "fr" && loaded[0].variants[0].id == "12345");
     assert(loaded[0].is_in_library);
+    assert(loaded[0].portrait_url == game.portrait_url);
     assert(client.LoadManualLibraryGames(other).empty());
     other.user.user_id = "first"; other.provider.idp_id = "ANOTHER_PROVIDER";
     assert(client.LoadManualLibraryGames(other).empty());
     std::vector<nxnow::GameInfo> games;
     nxnow::library::MergeManualGames(games, loaded);
     assert(games.size() == 1 && games[0].launch_app_id == "12345");
+    {
+        nxnow::PublicGame pictured = game;
+        pictured.image_url = "https://img.nvidiagrid.net/apps/1/KEY_ART.jpg;w=256";
+        assert(nxnow::library::ManualGameInfo(pictured).background_url ==
+               "https://img.nvidiagrid.net/apps/1/KEY_ART.jpg;w=640");
+    }
     // A later store sync replaces the declaration without duplicating its variant.
     games[0].id = "live-id"; games[0].uuid = "live-uuid";
     nxnow::library::MergeManualGames(games, loaded);
