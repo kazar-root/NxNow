@@ -95,10 +95,13 @@ TopBarFrame::TopBarFrame() : brls::Box(brls::Axis::COLUMN), backdrop_(std::make_
     header_container_ = new brls::Box(brls::Axis::ROW);
     header_container_->setId("shell-header"); header_container_->setHeight(100); header_container_->setShrink(0);
     header_container_->setPadding(10, 32, 10, 32); header_container_->setAlignItems(brls::AlignItems::CENTER);
-    auto* brand = new brls::Box(brls::Axis::ROW); brand->setWidth(92); brand->setShrink(0);
+    auto* brand = new brls::Box(brls::Axis::ROW); brand->setWidth(164); brand->setShrink(0);
     brand->setAlignItems(brls::AlignItems::CENTER);
-    auto* logo = new ui::BlendedLogo(); logo->setId("shell-logo"); logo->setWidth(80); logo->setHeight(80); logo->setShrink(0);
+    auto* logo = new ui::BlendedLogo(); logo->setId("shell-logo"); logo->setWidth(54); logo->setHeight(54); logo->setShrink(0);
     logo->setMarginRight(10); brand->addView(logo);
+    auto* brand_name = ui::MakeLabel("NxNow", 24, ui::Text(), ui::FontRole::Heading);
+    brand_name->setId("shell-brand"); brand_name->setSingleLine(true); brand_name->setShrink(0);
+    brand->addView(brand_name);
     header_container_->addView(brand);
     menu_ = new ui::ConsoleButton(ui::ConsoleIcon::Menu, Tr("Main menu"), [this] { ShowMainMenu(); });
     menu_->setId("shell-menu"); menu_->setMarginRight(10); header_container_->addView(menu_);

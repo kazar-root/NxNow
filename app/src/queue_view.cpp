@@ -3,6 +3,7 @@
 #include "localization.hpp"
 #include "ui_theme.hpp"
 
+#include <algorithm>
 #include <utility>
 #include <chrono>
 #include <cmath>
@@ -11,6 +12,97 @@ namespace nxnow
 {
 namespace
 {
+class LaunchTitleLabel final : public brls::Label
+{
+  public:
+    LaunchTitleLabel()
+    {
+        font = ui::Font(ui::FontRole::Heading);
+        setFontSize(30);
+        setHeight(80);
+        setShrink(0);
+        setSingleLine(false);
+        setAutoAnimate(false);
+        setHorizontalAlign(brls::HorizontalAlign::CENTER);
+    }
+
+    // The title owns a fixed two-line slot. Do not let the stock label's
+    // single-line truncation replace the measured lines rendered below.
+    void onLayout() override {}
+
+    void draw(NVGcontext* vg, float x, float y, float width, float height,
+              brls::Style, brls::FrameContext*) override
+    {
+        if (width <= 16 || height <= 0) return;
+        nvgSave(vg);
+        nvgFontFaceId(vg, font);
+        nvgFontQuality(vg, fontQuality);
+        nvgTextAlign(vg, NVG_ALIGN_LEFT | NVG_ALIGN_TOP);
+        if (cached_text_ != fullText || cached_width_ != width)
+            PrepareLines(vg, width);
+        nvgFontSize(vg, rendered_font_size_);
+        nvgTextAlign(vg, NVG_ALIGN_CENTER | NVG_ALIGN_TOP);
+        nvgFillColor(vg, a(ui::Text()));
+        nvgIntersectScissor(vg, x, y, width, height);
+        const float line_height = rendered_font_size_ * 1.2f;
+        const float top = y + (height - line_count_ * line_height) / 2;
+        for (int i = 0; i < line_count_; ++i)
+            nvgText(vg, x + width / 2, top + i * line_height, lines_[i].c_str(), nullptr);
+        nvgRestore(vg);
+    }
+
+  private:
+    static void RemoveLastCodePoint(std::string& text)
+    {
+        size_t end = text.size() - 1;
+        while (end > 0 && (static_cast<unsigned char>(text[end]) & 0xc0) == 0x80)
+            --end;
+        text.resize(end);
+    }
+
+    void PrepareLines(NVGcontext* vg, float width)
+    {
+        const float available = width - 16;
+        NVGtextRow rows[3];
+        int count = 0;
+        for (float size : {30.0f, 28.0f, 26.0f, 24.0f})
+        {
+            rendered_font_size_ = size;
+            nvgFontSize(vg, size);
+            count = nvgTextBreakLines(vg, fullText.c_str(), nullptr, available, rows, 3);
+            if (count <= 2) break;
+        }
+        line_count_ = std::min(count, 2);
+        for (int i = 0; i < line_count_; ++i)
+        {
+            auto& line = lines_[i];
+            line.assign(rows[i].start, rows[i].end);
+            const auto last = line.find_last_not_of(" \t\r\n");
+            line.resize(last == std::string::npos ? 0 : last + 1);
+            const auto fits = [&](const std::string& value) {
+                float bounds[4];
+                const float advance = nvgTextBounds(vg, 0, 0, value.c_str(), nullptr, bounds);
+                return std::max(advance, bounds[2]) - std::min(0.0f, bounds[0]) <= available;
+            };
+            // Unusually long names still stay within two lines. Keep UTF-8
+            // characters intact when the final line needs an ellipsis.
+            if ((i == 1 && count > 2) || !fits(line))
+            {
+                while (!line.empty() && !fits(line + "…")) RemoveLastCodePoint(line);
+                line += "…";
+            }
+        }
+        cached_text_ = fullText;
+        cached_width_ = width;
+    }
+
+    std::array<std::string, 2> lines_;
+    std::string cached_text_;
+    float cached_width_ = -1;
+    float rendered_font_size_ = 30;
+    int line_count_ = 0;
+};
+
 class LoadingDotsView final : public brls::View
 {
   public:
@@ -62,13 +154,15 @@ QueueView::QueueView(const QueueDisplayState& state, const StreamSettings& setti
     header->setShrink(0);
     header->setAlignItems(brls::AlignItems::CENTER);
     auto* logo = new brls::Image();
+    logo->setId("queue/logo");
     logo->setWidth(46);
     logo->setHeight(46);
     logo->setScalingType(brls::ImageScalingType::FIT);
-    logo->setImageFromRes("img/nxnow-logo-mark-small.png");
+    logo->setImageFromRes("img/nxnow-logo-external-small.png");
     logo->setMarginRight(12);
     header->addView(logo);
-    auto* brand = ui::MakeLabel(Tr("NxNow"), 24, ui::Accent(), ui::FontRole::Heading);
+    auto* brand = ui::MakeLabel(Tr("NxNow"), 24, ui::Text(), ui::FontRole::Heading);
+    brand->setId("queue/brand");
     brand->setGrow(1);
     header->addView(brand);
     phase_ = ui::MakeLabel(Tr("Launching your game"), 16, ui::Muted());
@@ -84,30 +178,35 @@ QueueView::QueueView(const QueueDisplayState& state, const StreamSettings& setti
     content->setMarginBottom(18);
     auto* artwork = new brls::Box(brls::Axis::COLUMN);
     artwork->setWidthPercentage(57);
+    artwork->setMaxHeightPercentage(100);
+    artwork->setMinHeight(0);
     artwork->setShrink(0);
     artwork->setMarginRight(40);
     auto* image = new CachedImage();
     image->setId("queue/cover");
     image->setWidthPercentage(100);
     image->setHeight(350);
-    image->setShrink(0);
+    image->setShrink(1);
+    image->setMinHeight(0);
     image->setCornerRadius(16);
     image->setScalingType(brls::ImageScalingType::FIT);
     image->setImageAlign(brls::ImageAlignment::CENTER);
     image->setClipsToBounds(false);
     SetCachedCoverImage(image, state.image_url);
     artwork->addView(image);
-    game_ = ui::MakeLabel(state.game_title, 30, ui::Text(), ui::FontRole::Heading);
+    game_ = new LaunchTitleLabel();
+    game_->setText(state.game_title);
     game_->setId("queue/game");
     game_->setMarginTop(16);
-    game_->setSingleLine(true);
     game_->setWidthPercentage(100);
     game_->setHorizontalAlign(brls::HorizontalAlign::CENTER);
     artwork->addView(game_);
     auto* requested = ui::MakeLabel(Tr("Requested stream") + " · " + ui::StreamSummary(settings) +
         " · " + Tr(GameLanguageLabel(settings.game_language)), 14, ui::Muted());
     requested->setId("queue/requested-settings");
+    requested->setMarginTop(8);
     requested->setSingleLine(true);
+    requested->setShrink(0);
     requested->setWidthPercentage(100);
     requested->setHorizontalAlign(brls::HorizontalAlign::CENTER);
     artwork->addView(requested);
@@ -116,6 +215,7 @@ QueueView::QueueView(const QueueDisplayState& state, const StreamSettings& setti
     auto* progress = new brls::Box(brls::Axis::COLUMN);
     progress->setGrow(1);
     progress->setShrink(1);
+    progress->setMinWidth(0);
     status_ = ui::MakeLabel({}, 26, ui::Text(), ui::FontRole::Heading);
     status_->setId("queue/status");
     status_->setSingleLine(false);

@@ -65,7 +65,7 @@ StreamOverlayView::StreamOverlayView()
     setFocusable(true);
     setHideHighlightBackground(true);
     setHideHighlightBorder(true);
-    logo_.setImageFromRes("img/nxnow-logo-mark-small.png");
+    logo_.setImageFromRes("img/nxnow-logo-external-small.png");
     for (size_t index = 0; index < fonts_.size(); ++index)
         fonts_[index] = ui::Font(static_cast<ui::FontRole>(index));
 }
@@ -111,14 +111,15 @@ void StreamOverlayView::draw(NVGcontext* vg, float x, float y, float width, floa
     nvgFillColor(vg, nvgRGBA(11, 12, 14, 242));
     nvgFill(vg);
     if (logo_.getTexture() > 0) {
-        const float mark_height = 48.0f * logo_.getOriginalImageHeight() / logo_.getOriginalImageWidth();
+        const float mark_height = 54.0f * logo_.getOriginalImageHeight() / logo_.getOriginalImageWidth();
         const float mark_y = 44.0f - mark_height * 0.5f;
         nvgBeginPath(vg);
-        nvgRect(vg, 40, mark_y, 48, mark_height);
-        nvgFillPaint(vg, nvgImagePattern(vg, 40, mark_y, 48, mark_height, 0, logo_.getTexture(), 1));
+        nvgRoundedRect(vg, 40, mark_y, 54, mark_height, 10);
+        nvgFillPaint(vg, nvgImagePattern(vg, 40, mark_y, 54, mark_height, 0, logo_.getTexture(), 1));
         nvgFill(vg);
     }
-    text(98, 44, "NxNow · Stream status", 15, ui::Muted(), ui::FontRole::Medium);
+    text(106, 44, "NxNow", 24, ui::Text(), ui::FontRole::Heading);
+    text(202, 44, "Stream status", 15, ui::Muted(), ui::FontRole::Medium);
     nvgFontFaceId(vg, fonts_[static_cast<size_t>(ui::FontRole::Heading)]);
     nvgFontSize(vg, 29);
     const bool long_title = nvgTextBounds(vg, 0, 0, display_.game_title.c_str(), nullptr, nullptr) > 860;

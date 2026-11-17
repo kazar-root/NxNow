@@ -1,8 +1,8 @@
 <div align="center">
 
-<img src="resources/icon/nxnow-logo-original.png" alt="NxNow logo" width="360" />
+<img src="resources/icon/nxnow-logo-original.png" alt="NxNow logo" width="240" />
 
-# V0.2d NxNow
+# V0.2e NxNow
 
 ### Your PC games. Your Nintendo Switch. Anywhere.
 
@@ -17,6 +17,18 @@ Beautiful design · Multilingual experience · Controller-first navigation · Cl
 </div>
 
 ---
+
+## What's new in v0.2e
+
+A small visual update with a **new logo for the application** and a clearer launch screen.
+
+- **New NxNow V3 app icon.** Used in hbmenu, at startup, during loading and as the temporary image placeholder. The GitHub page now uses the same logo.
+- **Consistent cloud branding.** The cloud-only **NxNow Externe** logo appears in the app headers, including game details, game launch, sign-in and stream status. **NxNow is written in white** beside the logo in the menu, details, launch and stream-status headers.
+- **A more compact menu logo.** Its 54 × 54 size matches the navigation buttons.
+- **Long game titles stay in their space.** Launch titles use at most two lines, with a smaller font when needed and an ellipsis for exceptionally long names, keeping the instructions and cancel button clear.
+- **New screenshots from a real Switch.** See the updated library, game launch, in-game chat, performance HUD, language selection and settings below.
+
+All the keyboard and streaming improvements from v0.2d are included. **The application and hbmenu identify this release as 0.2.4.**
 
 ## What's new in v0.2d
 
@@ -74,19 +86,42 @@ Whether you're exploring your library, launching a game, waiting for a server, o
 
 ## Screenshots
 
-<div align="center">
+Original captures from a Nintendo Switch, showing the new design and existing gameplay tools. These captures were taken on 0.2.3, before the final v0.2e header-logo and white-label adjustments.
 
-<img src="docs/screenshots/01-library.jpg" alt="NxNow library on Nintendo Switch" width="780" />
+<table>
+<tr>
+<td align="center"><img src="docs/screenshots/v0.2e/library-world-of-warcraft.jpg" alt="NxNow library with the new cloud logo and World of Warcraft selected" width="390" /><br /><strong>Your library and the new cloud logo</strong></td>
+<td align="center"><img src="docs/screenshots/v0.2e/library-diablo-immortal.jpg" alt="Second library page with Diablo Immortal, favorites and paging controls" width="390" /><br /><strong>Browse games, favorites and library pages</strong></td>
+</tr>
+<tr>
+<td align="center"><img src="docs/screenshots/v0.2e/game-details.jpg" alt="World of Warcraft details with Play, HOME shortcut and next-stream settings" width="390" /><br /><strong>Game details and your next streaming profile</strong></td>
+<td align="center"><img src="docs/screenshots/v0.2e/launching-cloud-rig.jpg" alt="NxNow requesting a cloud rig with queue and connection progress" width="390" /><br /><strong>Follow the cloud-rig launch and connection</strong></td>
+</tr>
+<tr>
+<td align="center"><img src="docs/screenshots/v0.2e/interface-languages.jpg" alt="NxNow interface-language selector on a Nintendo Switch" width="390" /><br /><strong>Choose the interface language</strong></td>
+<td align="center"><img src="docs/screenshots/v0.2e/settings.jpg" alt="NxNow advanced settings for game language, remembered graphics, server location and button mapping" width="390" /><br /><strong>Adjust game preferences and controls</strong></td>
+</tr>
+</table>
 
-<img src="docs/screenshots/02-world-of-warcraft-loading.jpg" alt="World of Warcraft loading on Nintendo Switch" width="780" />
+### Type in games and keep an eye on performance
 
-<img src="docs/screenshots/03-world-of-warcraft.jpg" alt="World of Warcraft gameplay on Nintendo Switch" width="780" />
+<img src="docs/screenshots/v0.2e/in-game-chat-performance.jpg" alt="World of Warcraft gameplay with hello world typed in chat and the NxNow FPS, bitrate, ping, battery and input-mode HUD" width="780" />
 
-<img src="docs/screenshots/04-stream-queue.jpg" alt="NxNow streaming queue on Nintendo Switch" width="780" />
+Type in a game's chat or text fields with the Switch virtual keyboard. **ZR + R3** opens or closes it; **L3 + R3** switches between gamepad and mouse/keyboard modes. Press **− and + together** to show or hide the performance HUD with FPS, bitrate, ping, battery level and the current input mode.
 
-<img src="docs/screenshots/05-virtual-keyboard.jpg" alt="Switch virtual keyboard during an EA sign-in" width="780" />
+<img src="docs/screenshots/05-virtual-keyboard.jpg" alt="The Switch virtual keyboard open over an EA sign-in text field" width="780" />
 
-</div>
+The same keyboard can be used in supported launcher sign-in fields. In mouse/keyboard mode, select the field with the left stick and ZR, then open the keyboard with **ZR + R3**. See the [FAQ & Tips](FAQ.md) for the complete guide.
+
+### From the library to gameplay
+
+<img src="docs/screenshots/v0.2e/world-of-warcraft-loading.jpg" alt="World of Warcraft Forever retrieving server information while streamed to Nintendo Switch" width="780" />
+
+### Performance settings and languages
+
+Choose your streaming profile in **Settings** or from a game's **Next stream** panel. Advanced options let you adjust resolution, frame rate, bitrate, codec and server location. Settings are saved automatically and apply to your next game session.
+
+The interface supports **English, Simplified Chinese, Spanish, Russian, Italian, French, Polish and Ukrainian**, plus automatic selection from your console language. The separate **Game language** preference can follow NxNow or request another supported language; availability depends on the game and GeForce NOW.
 
 ## Get started
 
@@ -105,7 +140,7 @@ By default, NxNow follows your console language for its interface and requests t
 | Controls | Action |
 | --- | --- |
 | **L3 + R3** | Switch between gamepad and mouse/keyboard modes |
-| **ZR + R3** | Open the virtual keyboard |
+| **ZR + R3** | Open or close the virtual keyboard |
 | **− and +** | Show or hide the streaming performance HUD |
 | **Left stick** (mouse mode) | Move the pointer |
 | **ZR / ZL** (mouse mode) | Left / right click |

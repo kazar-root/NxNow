@@ -5,6 +5,7 @@
 #include <map>
 #include <set>
 #include <thread>
+#include <vector>
 
 namespace startup_fixture
 {
@@ -15,7 +16,9 @@ int next_texture = 1;
 int visible_draws = 0;
 int unsafe_deletions = 0;
 brls::Rect qr_background;
+std::vector<brls::Rect> text_runs;
 brls::Rect QrBackground() { return qr_background; }
+const std::vector<brls::Rect>& TextRuns() { return text_runs; }
 int FrameDraws() { return visible_draws; }
 int UnsafeDeletions() { return unsafe_deletions; }
 
@@ -68,13 +71,23 @@ class Video final : public VideoContext
             }
         };
         p.renderStroke = [](void*, NVGpaint* paint, NVGcompositeOperationState, NVGscissor*, float, float, const NVGpath*, int) { Record(paint); };
-        p.renderTriangles = [](void*, NVGpaint* paint, NVGcompositeOperationState, NVGscissor*, const NVGvertex*, int, float) { Record(paint); };
+        p.renderTriangles = [](void*, NVGpaint* paint, NVGcompositeOperationState, NVGscissor*, const NVGvertex* vertices, int count, float) {
+            Record(paint);
+            if (!count || !paint->image || textures.at(paint->image).type != NVG_TEXTURE_ALPHA) return;
+            float left = vertices[0].x, right = left, top = vertices[0].y, bottom = top;
+            for (int i = 1; i < count; ++i)
+            {
+                left = std::min(left, vertices[i].x); right = std::max(right, vertices[i].x);
+                top = std::min(top, vertices[i].y); bottom = std::max(bottom, vertices[i].y);
+            }
+            text_runs.emplace_back(left, top, right - left, bottom - top);
+        };
         p.renderDelete = [](void*) {};
         context_ = nvgCreateInternal(&p); assert(context_);
     }
     ~Video() override { nvgDeleteInternal(context_); }
     void clear(NVGcolor) override {}
-    void beginFrame() override { visible_draws = 0; }
+    void beginFrame() override { visible_draws = 0; text_runs.clear(); }
     void endFrame() override {}
     void resetState() override {}
     double getScaleFactor() override { return 1; }

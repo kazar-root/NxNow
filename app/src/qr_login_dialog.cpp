@@ -33,9 +33,9 @@ QrLoginDialog::QrLoginDialog(
     header->setMarginBottom(20);
     auto* logo = new brls::Image();
     logo->setId("login/logo");
-    logo->setWidth(80); logo->setHeight(80); logo->setShrink(0);
+    logo->setWidth(54); logo->setHeight(54); logo->setShrink(0);
     logo->setScalingType(brls::ImageScalingType::FIT);
-    logo->setImageFromRes("img/nxnow-logo-mark-small.png");
+    logo->setImageFromRes("img/nxnow-logo-external-small.png");
     logo->setMarginRight(20); header->addView(logo);
     auto* heading = ui::MakeLabel(Tr("Sign in with QR code"), 32, ui::Text(), ui::FontRole::Heading);
     heading->setSingleLine(true); heading->setGrow(1); heading->setShrink(1);
