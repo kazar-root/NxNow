@@ -28,6 +28,7 @@ build/ui-startup/ui_startup cold-fr
 build/ui-startup/ui_startup pages-fr
 build/ui-startup/ui_startup auto-fr
 build/ui-startup/ui_startup loading-fr
+build/ui-startup/ui_startup queue-title-fr
 build/ui-startup/ui_startup account-fr
 build/ui-startup/ui_startup qr-fr
 build/ui-startup/ui_startup qr-zh
@@ -72,6 +73,13 @@ The `input-fr` fixture uses the real advanced settings dropdown to persist mouse
 speed and retain it across streaming-profile changes. It opens the update placeholder,
 formats real/unknown battery states, and verifies launch-title bounds and neutral
 cancel focus at 1280×720.
+
+The `queue-title-fr` fixture checks the 54px menu logo against the header buttons
+and records actual NanoVG glyph runs in the launch title slot. Short, long,
+French, Chinese and unbroken titles must render on at most two contained lines
+through queue, rig preparation, connection and video stages, without overlapping
+the cover, requested settings or cancellation action. The title uses a smaller
+font when needed and an ellipsis for names that exceed both lines.
 
 The `profile-fr` and `settings-login-fr` cases start signed out and inspect the
 real profile-pictogram guidance. They complete a synthetic NVIDIA QR sign-in

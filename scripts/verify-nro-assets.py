@@ -23,9 +23,9 @@ def verify(nro_path, resources):
         if title != "NxNow" or author != "KazaR-RooT":
             raise ValueError(f"Wrong HB Menu metadata for language {language}: {title}, {author}")
     version = c_string(nacp[0x3060:0x3070])
-    if version != "0.2.3":
+    if version != "0.2.4":
         raise ValueError(f"Wrong NRO version: {version}")
-    print("PASS HB Menu: NxNow / KazaR-RooT / 0.2.3; supplied icon; all 16 languages")
+    print("PASS HB Menu: NxNow / KazaR-RooT / 0.2.4; supplied icon; all 16 languages")
     offset, size = struct.unpack_from("<QQ", data, executable_size + 40)
     romfs = data[executable_size + offset:executable_size + offset + size]
     header = struct.unpack_from("<10Q", romfs)
@@ -57,6 +57,8 @@ def verify(nro_path, resources):
     expected = sorted((resources / "font").glob("*"))
     expected.append(resources / "img" / "nxnow-logo-mark.png")
     expected.append(resources / "img" / "nxnow-logo-mark-small.png")
+    expected.append(resources / "img" / "nxnow-logo-external.png")
+    expected.append(resources / "img" / "nxnow-logo-external-small.png")
     expected.append(resources / "credits.txt")
     expected.extend(sorted((resources / "icon").glob("*")))
     expected.extend(sorted((resources / "certs").glob("*")))
@@ -76,6 +78,12 @@ def verify(nro_path, resources):
     installer = resources.parent / "tools/nxnow-forwarder-installer/nxnow-forwarder-installer.nro"
     if entries["shortcut/NXNowForwarderInstaller.nro"] != installer.read_bytes():
         raise ValueError("Embedded HOME installer is stale")
+    shortcut = entries["shortcut/NXNowShortcut.nro"]
+    shortcut_size = struct.unpack_from("<I", shortcut, 0x18)[0]
+    icon_offset, icon_size = struct.unpack_from("<QQ", shortcut, shortcut_size + 8)
+    shortcut_icon = shortcut[shortcut_size + icon_offset:shortcut_size + icon_offset + icon_size]
+    if shortcut_icon != (resources / "icon/nxnow-icon.jpg").read_bytes():
+        raise ValueError("Embedded shortcut icon is stale")
     stale = [path for path in entries if "now" in path.lower() and "nxnow" not in path.lower()]
     if stale:
         raise ValueError(f"Stale branded asset names: {stale}")

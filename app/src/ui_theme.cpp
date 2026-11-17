@@ -94,34 +94,20 @@ StyledLabel::StyledLabel(FontRole role)
 
 BlendedLogo::BlendedLogo()
 {
-    image_.setImageFromRes("img/nxnow-logo-mark-small.png");
+    image_.setImageFromRes("img/nxnow-logo-external-small.png");
 }
 void BlendedLogo::draw(NVGcontext* vg, float x, float y, float w, float h,
                        brls::Style, brls::FrameContext*)
 {
     if (!image_.getTexture() || w <= 0 || h <= 0) return;
     nvgSave(vg);
-    // Additive composition removes the original dark backing. Feather the
-    // perimeter into the live backdrop, keeping the supplied artwork intact.
-    nvgGlobalCompositeOperation(vg, NVG_LIGHTER);
+    // The external logo includes its violet background; preserve its colors.
     const auto paint = nvgImagePattern(vg, x, y, w, h, 0, image_.getTexture(), 1);
-    const float feather = std::min(w, h) * 0.09f;
-    constexpr int bands = 12;
-    for (int band = 0; band <= bands; ++band)
-    {
-        const float inset = feather * band / bands;
-        nvgBeginPath(vg);
-        nvgRoundedRect(vg, x + inset, y + inset, w - inset * 2, h - inset * 2, 10);
-        if (band < bands)
-        {
-            const float inner = feather * (band + 1) / bands;
-            nvgRoundedRect(vg, x + inner, y + inner, w - inner * 2, h - inner * 2, 10);
-            nvgPathWinding(vg, NVG_HOLE);
-        }
-        const float opacity = band == bands ? 1 : (band + 0.5f) / bands;
-        nvgGlobalAlpha(vg, a(Text()).a * opacity);
-        nvgFillPaint(vg, paint); nvgFill(vg);
-    }
+    nvgGlobalAlpha(vg, a(Text()).a);
+    nvgBeginPath(vg);
+    nvgRoundedRect(vg, x, y, w, h, 10);
+    nvgFillPaint(vg, paint);
+    nvgFill(vg);
     nvgRestore(vg);
 }
 

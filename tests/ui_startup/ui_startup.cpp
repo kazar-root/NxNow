@@ -12,14 +12,20 @@
 #include "ui_theme.hpp"
 #include "ui_layout_fixtures.hpp"
 #include <borealis.hpp>
+#include <algorithm>
 #include <cassert>
 #include <chrono>
+#include <cmath>
 #include <cstdio>
 #include <filesystem>
 #include <thread>
+#include <vector>
 #include <unistd.h>
 
-namespace startup_fixture { int FrameDraws(); int UnsafeDeletions(); brls::Rect QrBackground(); }
+namespace startup_fixture {
+int FrameDraws(); int UnsafeDeletions(); brls::Rect QrBackground();
+const std::vector<brls::Rect>& TextRuns();
+}
 
 void Pump(int frames = 4)
 {
@@ -81,7 +87,10 @@ int main(int argc, char** argv)
     auto* carousel = dynamic_cast<nxnow::GameCarouselView*>(root->getView("library-carousel"));
     assert(carousel);
     auto* logo = root->getView("shell-logo");
-    assert(logo && logo->getWidth() == 80 && logo->getHeight() == 80);
+    assert(logo && logo->getWidth() == 54 && logo->getHeight() == 54);
+    auto* brand = dynamic_cast<brls::Label*>(root->getView("shell-brand"));
+    assert(brand && brand->getFullText() == "NxNow");
+    assert(brand->getTextColor().r == 1 && brand->getTextColor().g == 1 && brand->getTextColor().b == 1);
     nxnow::GfnClient qr_client;
     int qr_completed = 0;
     if (scenario == "qr-fr" || scenario == "qr-zh")
@@ -104,7 +113,7 @@ int main(int argc, char** argv)
         assert(qr->getView("login/retry")->getFrame().inscribed(details));
         assert(qr->getView("login/cancel")->getFrame().inscribed(details));
         assert(!qr_frame.collideWith(qr->getView("login/actions")->getFrame()));
-        assert(qr->getView("login/logo")->getWidth() == 80);
+        assert(qr->getView("login/logo")->getWidth() == 54);
         brls::Application::giveFocus(qr->getView("login/retry"));
         brls::Application::onControllerButtonPressed(brls::BUTTON_NAV_RIGHT, false);
         assert(brls::Application::getCurrentFocus() == qr->getView("login/cancel"));
@@ -288,12 +297,22 @@ int main(int argc, char** argv)
         {
             auto* frame = dynamic_cast<brls::ScrollingFrame*>(detail->getView("detail/description"));
             assert(frame && frame->getHeight() == 166);
+            brls::Image external_logo;
+            external_logo.setImageFromRes("img/nxnow-logo-external-small.png");
+            auto* detail_logo = dynamic_cast<brls::Image*>(detail->getView("detail/logo"));
+            assert(detail_logo && detail_logo->getTexture() == external_logo.getTexture());
+            auto* detail_brand = dynamic_cast<brls::Label*>(detail->getView("detail/brand"));
+            assert(detail_brand && detail_brand->getFullText() == "NxNow");
+            assert(detail_brand->getTextColor().r == 1 && detail_brand->getTextColor().g == 1 && detail_brand->getTextColor().b == 1);
             auto* label = dynamic_cast<brls::Label*>(frame->getChildren().front());
             assert(label && label->getFullText().find("English") == std::string::npos);
             if (scenario == "detail-fr")
             {
                 assert(calls.description_languages == std::vector<std::string> {"fr"});
-                assert(label->getFullText() == "Description complète en français du jeu sélectionné.");
+                const auto description = label->getFullText();
+                assert(description.starts_with("Description complète en français du jeu sélectionné.\n"));
+                assert(std::count(description.begin(), description.end(), '\n') == 16);
+                assert(label->getHeight() > frame->getHeight());
             }
             else assert(calls.description_languages.empty());
         }
@@ -334,9 +353,77 @@ int main(int argc, char** argv)
         brls::Application::pushActivity(new brls::Activity(queue), brls::TransitionAnimation::NONE); Pump();
         assert(brls::Application::getCurrentFocus() != queue->getView("queue/cancel"));
         assert(queue->getView("queue/cover")->getFrame().getMidX() == queue->getView("queue/game")->getFrame().getMidX());
+        Until([] { return !brls::Application::isInputBlocks(); });
         brls::Application::onControllerButtonPressed(brls::BUTTON_NAV_DOWN, false); Pump();
         assert(brls::Application::getCurrentFocus() == queue->getView("queue/cancel"));
         brls::Application::popActivity(brls::TransitionAnimation::NONE); Pump();
+    }
+    if (scenario == "queue-title-fr")
+    {
+        assert(logo->getHeight() == root->getView("shell-menu")->getHeight());
+        assert(logo->getFrame().getMidY() == root->getView("shell-menu")->getFrame().getMidY());
+        nxnow::QueueDisplayState display;
+        display.status = "Preparing your cloud rig";
+        display.detail = "Your place is ready. GeForce NOW is starting your game.";
+        auto* queue = new nxnow::QueueView(display, nxnow::StreamSettings {}, [] {});
+        brls::Application::pushActivity(new brls::Activity(queue), brls::TransitionAnimation::NONE); Pump();
+        Until([] { return !brls::Application::isInputBlocks(); });
+        brls::Image external_logo;
+        external_logo.setImageFromRes("img/nxnow-logo-external-small.png");
+        auto* launch_logo = dynamic_cast<brls::Image*>(queue->getView("queue/logo"));
+        assert(launch_logo && launch_logo->getTexture() == external_logo.getTexture());
+        auto* launch_brand = dynamic_cast<brls::Label*>(queue->getView("queue/brand"));
+        assert(launch_brand && launch_brand->getFullText() == "NxNow");
+        assert(launch_brand->getTextColor().r == 1 && launch_brand->getTextColor().g == 1 && launch_brand->getTextColor().b == 1);
+        assert(brls::Application::getCurrentFocus() == queue->getView("queue/status"));
+        brls::Application::onControllerButtonPressed(brls::BUTTON_NAV_DOWN, false); Pump();
+        assert(brls::Application::getCurrentFocus() == queue->getView("queue/cancel"));
+        brls::Application::onControllerButtonPressed(brls::BUTTON_NAV_UP, false); Pump();
+        const std::vector<std::string> titles {
+            "Portal 2",
+            "The Witcher 3: Wild Hunt — Complete Edition",
+            "The Elder Scrolls V: Skyrim Special Edition — Anniversary Upgrade — "
+                "A very long game title with additional expansion packs and bonus content",
+            std::string(160, 'W'),
+            "Un très long titre français — édition intégrale, aventures supplémentaires, "
+                "extension définitive et contenu additionnel à télécharger",
+            "怪物猎人世界冰原大师版特别周年纪念豪华完整版怪物猎人世界冰原大师版特别周年纪念豪华完整版"};
+        for (int stage : {1, 2, 3, 4})
+        {
+            display.stage = stage;
+            for (const auto& title : titles)
+            {
+                display.game_title = title;
+                queue->Update(display); Pump();
+                auto* label = dynamic_cast<brls::Label*>(queue->getView("queue/game"));
+                assert(label && label->getFullText() == title && label->getHeight() == 80);
+                const auto frame = label->getFrame();
+                const auto art_frame = label->getParent()->getFrame();
+                const auto cover = queue->getView("queue/cover")->getFrame();
+                const auto settings = queue->getView("queue/requested-settings")->getFrame();
+                assert(art_frame.inscribed(queue->getFrame()) && frame.inscribed(art_frame));
+                assert(settings.inscribed(art_frame));
+                assert(cover.getMaxY() <= frame.getMinY());
+                assert(frame.getMaxY() <= settings.getMinY());
+                assert(settings.getMaxY() <= queue->getView("queue/cancel")->getFrame().getMinY());
+                std::vector<float> rows;
+                for (const auto& run : startup_fixture::TextRuns())
+                {
+                    if (run.getMidX() < frame.getMinX() || run.getMidX() > frame.getMaxX() ||
+                        run.getMidY() < frame.getMinY() || run.getMidY() > frame.getMaxY()) continue;
+                    assert(run.getMinX() >= frame.getMinX() - 1 && run.getMaxX() <= frame.getMaxX() + 1);
+                    assert(run.getMinY() >= frame.getMinY() - 1 && run.getMaxY() <= frame.getMaxY() + 1);
+                    if (std::none_of(rows.begin(), rows.end(), [&](float y) { return std::abs(y - run.getMidY()) < 15; }))
+                        rows.push_back(run.getMidY());
+                }
+                assert(!rows.empty() && rows.size() <= 2);
+                if (title == "Portal 2") assert(rows.size() == 1);
+                if (title.size() > 100) assert(rows.size() == 2);
+                std::printf("QUEUE TITLE stage=%d bytes=%zu rendered-lines=%zu bounds=OK\n", stage, title.size(), rows.size());
+            }
+        }
+        brls::Application::popActivity(brls::TransitionAnimation::NONE); Pump();
+        std::puts("PASS compact 54px menu logo and launch titles rendered on at most two contained lines");
     }
     if (scenario == "profile-fr" || scenario == "settings-login-fr")
     {

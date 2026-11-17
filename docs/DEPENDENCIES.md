@@ -10,7 +10,7 @@ Le fichier `CMakeLists.txt` décrit les cibles et options effectivement utilisé
 Les bibliothèques statiques de `extern/ffmpeg` annoncent la version
 `N-117227-ge932809b8f`, avec `--enable-gpl` et le backend `nvtegra` pour Horizon.
 Sources du fork : https://github.com/averne/FFmpeg/tree/e932809b8f
-Une archive de ce commit accompagne la release v0.1.
+Une archive de ce commit accompagne chaque release, dont v0.2.4 (v0.2e).
 Consulter `licenses/FFmpeg-LICENSE.md`, `licenses/FFmpeg-GPL-2.0.txt` et les notices du fork.
 
 La configuration extraite de la bibliothèque est conservée dans `ffmpeg-configure.txt`.
@@ -28,4 +28,4 @@ Les licences des polices, Material Icons et des composants du raccourci HOME fig
 
 Le code de l'application reste sous MIT. Le NRO combiné avec ce FFmpeg est distribué
 avec GPL-3.0 et les notices des composants ; la licence MIT d'origine est conservée.
-Les sources de NxNow correspondant au NRO sont celles du tag `v0.1` de ce dépôt.
+Les sources de NxNow correspondant au NRO v0.2e sont celles du tag `v0.2.4` de ce dépôt.

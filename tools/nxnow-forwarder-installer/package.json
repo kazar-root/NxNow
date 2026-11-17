@@ -1,7 +1,7 @@
 {
   "private": true,
   "name": "nxnow-forwarder-installer",
-  "version": "0.1.0",
+  "version": "0.2.4",
   "license": "MIT",
   "description": "NxNow Horizon forwarder generator and installer",
   "nacp": {

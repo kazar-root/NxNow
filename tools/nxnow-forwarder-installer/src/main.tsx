@@ -116,7 +116,7 @@ async function generateNsp(request: InstallRequest): Promise<Uint8Array> {
         nacp.id = titleId;
         nacp.title = request.name;
         nacp.author = request.author || 'KazaR-RooT';
-        nacp.version = request.displayVersion || '0.1';
+        nacp.version = request.displayVersion || '0.2.4';
         nacp.startupUserAccount = 0;
         nacp.userAccountSaveDataSize = 0n;
         nacp.userAccountSaveDataJournalSize = 0n;
